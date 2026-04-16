@@ -3,28 +3,19 @@ import SwiftData
 import SwiftAgent
 
 /// Detail view for editing a single note's title, body, and pinned state.
-///
-/// The editor auto-saves changes to SwiftData via the model context.
-/// Title uses a `TextField`, body uses a `TextEditor`, and pinned state
-/// is a `Toggle`.
+/// Also shows linked notes and semantically similar notes.
 struct NoteEditorView: View {
-    /// The identifier of the note being edited.
     let noteID: String
 
-    /// Query for the specific note by ID.
     @Query private var notes: [Note]
-
-    /// The model context for saving changes.
     @Environment(\.modelContext) private var modelContext
 
-    /// The note matching ``noteID``, if it still exists.
     private var note: Note? {
         notes.first { $0.id == noteID }
     }
 
     init(noteID: String) {
         self.noteID = noteID
-        // Predicate-based init for the query to fetch only this note.
         let id = noteID
         _notes = Query(filter: #Predicate<Note> { $0.id == id })
     }
@@ -43,66 +34,130 @@ struct NoteEditorView: View {
     }
 }
 
-/// Internal form that binds directly to a ``Note`` model object.
-///
-/// Separated from ``NoteEditorView`` so that the `note` binding is
-/// guaranteed non-optional within this scope.
+/// Internal form with the note editor, linked notes, and similar notes.
 private struct NoteEditorForm: View {
-    /// The note being edited. SwiftData observes property changes
-    /// automatically.
     @Bindable var note: Note
-
-    /// The model context for explicit saves after edits.
     @Environment(\.modelContext) private var modelContext
+    @Query private var allNotes: [Note]
+
+    @State private var similarNotes: [(id: String, title: String, score: Double)] = []
+    @State private var loadingSimilar = false
 
     var body: some View {
         Form {
             Section("Title") {
                 TextField("Note title", text: $note.title)
                     .font(.title2)
-                    .onChange(of: note.title) {
-                        markUpdated()
-                    }
+                    .onChange(of: note.title) { markUpdated() }
             }
 
             Section("Content") {
                 TextEditor(text: $note.body)
                     .frame(minHeight: 200)
                     .font(.body)
-                    .onChange(of: note.body) {
-                        markUpdated()
-                    }
+                    .onChange(of: note.body) { markUpdated() }
             }
 
             Section {
                 Toggle("Pinned", isOn: $note.pinned)
-                    .onChange(of: note.pinned) {
-                        markUpdated()
+                    .onChange(of: note.pinned) { markUpdated() }
+            }
+
+            // Linked notes
+            if !note.linkedNoteIDs.isEmpty {
+                Section("Linked Notes") {
+                    ForEach(linkedNotes, id: \.id) { linked in
+                        Label(linked.title, systemImage: "link")
+                            .foregroundStyle(.blue)
                     }
+                }
+            }
+
+            // Similar notes (computed via embeddings)
+            Section {
+                if loadingSimilar {
+                    ProgressView("Finding similar notes...")
+                } else if similarNotes.isEmpty {
+                    Text("No similar notes found")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(similarNotes, id: \.id) { item in
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(item.title)
+                                Text(String(format: "%.0f%% similar", item.score * 100))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            if !note.linkedNoteIDs.contains(item.id) {
+                                Button {
+                                    linkNote(item.id)
+                                } label: {
+                                    Image(systemName: "link.badge.plus")
+                                }
+                                .buttonStyle(.borderless)
+                            } else {
+                                Image(systemName: "link")
+                                    .foregroundStyle(.green)
+                            }
+                        }
+                    }
+                }
+            } header: {
+                Text("Similar Notes")
+            } footer: {
+                Text("Powered by Apple NaturalLanguage embeddings")
             }
 
             Section("Info") {
-                LabeledContent("Created") {
-                    Text(note.createdAt, style: .date)
-                }
-                LabeledContent("Updated") {
-                    Text(note.updatedAt, style: .relative)
-                }
+                LabeledContent("Created") { Text(note.createdAt, style: .date) }
+                LabeledContent("Updated") { Text(note.updatedAt, style: .relative) }
                 LabeledContent("ID") {
                     Text(note.id)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+                LabeledContent("Embedding") {
+                    Text(note.embedding != nil ? "✓ \(note.embedding!.count)d" : "None")
+                        .font(.caption)
+                        .foregroundStyle(note.embedding != nil ? .green : .secondary)
                 }
             }
         }
         .formStyle(.grouped)
         .navigationTitle(note.title)
-        #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
-        #endif
+        .task { await loadSimilarNotes() }
     }
 
-    /// Update the note's timestamp and persist changes.
+    /// Notes that are explicitly linked to this one.
+    private var linkedNotes: [Note] {
+        allNotes.filter { note.linkedNoteIDs.contains($0.id) }
+    }
+
+    /// Link this note to another note bidirectionally.
+    private func linkNote(_ otherID: String) {
+        Task {
+            try? await NoteStore.shared.link(noteID: note.id, toNoteID: otherID)
+        }
+    }
+
+    /// Load semantically similar notes via embeddings.
+    private func loadSimilarNotes() async {
+        loadingSimilar = true
+        defer { loadingSimilar = false }
+        do {
+            let results = try await NoteStore.shared.findSimilar(
+                toNoteID: note.id, limit: 5
+            )
+            similarNotes = results.map { (id: $0.note.id, title: $0.note.title, score: $0.similarity) }
+        } catch {
+            similarNotes = []
+        }
+    }
+
     private func markUpdated() {
         note.updatedAt = Date()
         try? modelContext.save()

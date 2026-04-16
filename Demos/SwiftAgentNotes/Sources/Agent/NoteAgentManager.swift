@@ -91,9 +91,13 @@ final class NoteAgentManager: @unchecked Sendable {
             try await server.register(CreateNoteTool.asAgentTool())
             try await server.register(ListNotesTool.asAgentTool())
             try await server.register(SearchNotesTool.asAgentTool())
+            try await server.register(SemanticSearchNotesTool.asAgentTool())
             try await server.register(GetNoteTool.asAgentTool())
             try await server.register(UpdateNoteTool.asAgentTool())
             try await server.register(DeleteNoteTool.asAgentTool())
+            try await server.register(FindSimilarNotesTool.asAgentTool())
+            try await server.register(LinkNotesTool.asAgentTool())
+            try await server.register(GetLinkedNotesTool.asAgentTool())
 
             let serverTransport = InProcessServerTransport()
             try await server.start(transport: serverTransport)

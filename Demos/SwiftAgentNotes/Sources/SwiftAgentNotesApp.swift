@@ -36,6 +36,9 @@ struct SwiftAgentNotesApp: App {
             ContentView()
                 .environment(agentManager)
                 .task {
+                    // Backfill embeddings for existing notes that
+                    // predate the embedding feature.
+                    try? await NoteStore.shared.backfillEmbeddings()
                     await agentManager.start()
                 }
         }

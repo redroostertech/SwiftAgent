@@ -4,9 +4,9 @@ import SwiftAgent
 
 /// A single note persisted via SwiftData.
 ///
-/// Each note has a title, Markdown body, pinned flag, and automatic
-/// timestamps for creation and last update. The ``id`` is a stable
-/// `UUID` string suitable for passing through the agent tool surface.
+/// Each note has a title, Markdown body, pinned flag, automatic
+/// timestamps, a semantic embedding vector for similarity search,
+/// and explicit links to other notes.
 @Model
 final class Note {
     /// Stable identifier exposed to agent tools as a plain string.
@@ -27,12 +27,17 @@ final class Note {
     /// Timestamp of the most recent edit.
     var updatedAt: Date
 
+    /// Semantic embedding vector computed from the note's content via
+    /// Apple's NaturalLanguage framework. Used for similarity search
+    /// and auto-linking. `nil` if the embedding could not be computed.
+    var embedding: [Double]?
+
+    /// Identifiers of notes explicitly linked to this one. Links are
+    /// bidirectional — if note A links to note B, note B's
+    /// `linkedNoteIDs` also contains note A's id.
+    var linkedNoteIDs: [String]
+
     /// Create a new note with the given properties.
-    ///
-    /// - Parameters:
-    ///   - title: The note's headline.
-    ///   - body: Markdown body content.
-    ///   - pinned: Whether the note should be pinned. Defaults to `false`.
     init(title: String, body: String, pinned: Bool = false) {
         self.id = UUID().uuidString
         self.title = title
@@ -41,5 +46,7 @@ final class Note {
         let now = Date()
         self.createdAt = now
         self.updatedAt = now
+        self.embedding = nil
+        self.linkedNoteIDs = []
     }
 }

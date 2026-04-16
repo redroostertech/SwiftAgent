@@ -4,34 +4,25 @@ import SwiftAgent
 
 /// Thread-safe data-access layer for ``Note`` persistence.
 ///
-/// `NoteStore` is a global actor that owns the ``ModelContainer`` and
-/// exposes CRUD operations consumed by both SwiftUI views and agent
-/// tools. All SwiftData work is isolated to the actor so callers never
-/// have to worry about threading.
+/// `NoteStore` is a `@ModelActor` that owns the ``ModelContainer`` and
+/// exposes CRUD operations, semantic search via embeddings, and note
+/// linking. All SwiftData work is isolated to the actor.
 @ModelActor
 actor NoteStore {
-    /// Process-wide shared instance. Initialized once at app launch via
-    /// ``configure(container:)``.
+    /// Process-wide shared instance. Initialized once at app launch.
     static var shared: NoteStore!
 
     /// One-time setup called from the app entry point.
-    ///
-    /// - Parameter container: The SwiftData container created by the app.
     static func configure(container: ModelContainer) {
         shared = NoteStore(modelContainer: container)
     }
 
     // MARK: - Create
 
-    /// Create a new note and return its identifier.
-    ///
-    /// - Parameters:
-    ///   - title: The note's headline.
-    ///   - body: Markdown body content.
-    ///   - pinned: Whether the note should be pinned.
-    /// - Returns: The new note's stable `id` string.
+    /// Create a new note, compute its embedding, and return its identifier.
     func create(title: String, body: String, pinned: Bool = false) throws -> String {
         let note = Note(title: title, body: body, pinned: pinned)
+        note.embedding = EmbeddingService.shared.embedNote(title: title, body: body)
         modelContext.insert(note)
         try modelContext.save()
         return note.id
@@ -39,19 +30,13 @@ actor NoteStore {
 
     // MARK: - Read
 
-    /// Fetch all notes sorted by pinned-first, then most recently updated.
-    ///
-    /// - Parameter limit: Optional cap on the number of results.
-    /// - Returns: An array of notes in display order.
+    /// Fetch all notes sorted by most recently updated. Pinned-first
+    /// ordering is applied in memory.
     func list(limit: Int? = nil) throws -> [Note] {
         var descriptor = FetchDescriptor<Note>(
-            sortBy: [
-                SortDescriptor(\.updatedAt, order: .reverse)
-            ]
+            sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
         )
-        if let limit {
-            descriptor.fetchLimit = limit
-        }
+        if let limit { descriptor.fetchLimit = limit }
         let results = try modelContext.fetch(descriptor)
         return results.sorted { lhs, rhs in
             if lhs.pinned != rhs.pinned { return lhs.pinned }
@@ -60,9 +45,6 @@ actor NoteStore {
     }
 
     /// Fetch a single note by its identifier.
-    ///
-    /// - Parameter id: The note's `id` string.
-    /// - Returns: The matching note, or `nil` if not found.
     func get(id: String) throws -> Note? {
         let predicate = #Predicate<Note> { $0.id == id }
         var descriptor = FetchDescriptor<Note>(predicate: predicate)
@@ -71,10 +53,6 @@ actor NoteStore {
     }
 
     /// Full-text search across title and body.
-    ///
-    /// - Parameter query: The search string. Matched case-insensitively
-    ///   against both ``Note/title`` and ``Note/body``.
-    /// - Returns: Matching notes sorted by update date descending.
     func search(query: String) throws -> [Note] {
         let lowered = query.localizedLowercase
         let predicate = #Predicate<Note> {
@@ -88,42 +66,129 @@ actor NoteStore {
         return try modelContext.fetch(descriptor)
     }
 
+    // MARK: - Semantic search
+
+    /// Find notes semantically similar to a query string using
+    /// embedding cosine similarity.
+    ///
+    /// Falls back to text search if embeddings are unavailable.
+    func semanticSearch(query: String, limit: Int = 5) throws -> [(note: Note, similarity: Double)] {
+        guard let queryEmbedding = EmbeddingService.shared.embed(query) else {
+            let textResults = try search(query: query)
+            return textResults.prefix(limit).map { ($0, 1.0) }
+        }
+        let allNotes = try modelContext.fetch(FetchDescriptor<Note>())
+        return EmbeddingService.shared.findSimilar(
+            to: queryEmbedding, in: allNotes, threshold: 0.3, limit: limit
+        )
+    }
+
+    /// Find notes similar to a given note by its ID.
+    func findSimilar(toNoteID id: String, limit: Int = 5) throws -> [(note: Note, similarity: Double)] {
+        guard let note = try get(id: id), let embedding = note.embedding else {
+            return []
+        }
+        let allNotes = try modelContext.fetch(FetchDescriptor<Note>())
+        let others = allNotes.filter { $0.id != id }
+        return EmbeddingService.shared.findSimilar(
+            to: embedding, in: others, threshold: 0.3, limit: limit
+        )
+    }
+
     // MARK: - Update
 
-    /// Update mutable fields of an existing note.
-    ///
-    /// Only non-`nil` parameters are applied; omitted fields keep their
-    /// current values.
-    ///
-    /// - Parameters:
-    ///   - id: The note's identifier.
-    ///   - title: New title, or `nil` to keep the current one.
-    ///   - body: New body, or `nil` to keep the current one.
-    ///   - pinned: New pinned state, or `nil` to keep the current one.
-    /// - Throws: If the note is not found or save fails.
+    /// Update mutable fields of an existing note. Only non-`nil`
+    /// parameters are applied. Recomputes the embedding if content
+    /// changed.
     func update(id: String, title: String?, body: String?, pinned: Bool?) throws {
         guard let note = try get(id: id) else {
             throw NoteStoreError.notFound(id: id)
         }
+        let contentChanged = (title != nil && title != note.title) ||
+                             (body != nil && body != note.body)
         if let title { note.title = title }
         if let body { note.body = body }
         if let pinned { note.pinned = pinned }
         note.updatedAt = Date()
+        if contentChanged {
+            note.embedding = EmbeddingService.shared.embedNote(
+                title: note.title, body: note.body
+            )
+        }
         try modelContext.save()
     }
 
     // MARK: - Delete
 
-    /// Delete a note by its identifier.
-    ///
-    /// - Parameter id: The note's identifier.
-    /// - Throws: ``NoteStoreError/notFound(id:)`` if no matching note exists.
+    /// Delete a note by its identifier. Also removes links from other
+    /// notes pointing to this one.
     func delete(id: String) throws {
         guard let note = try get(id: id) else {
             throw NoteStoreError.notFound(id: id)
         }
+        // Clean up bidirectional links.
+        for linkedID in note.linkedNoteIDs {
+            if let linked = try get(id: linkedID) {
+                linked.linkedNoteIDs.removeAll { $0 == id }
+            }
+        }
         modelContext.delete(note)
         try modelContext.save()
+    }
+
+    // MARK: - Linking
+
+    /// Create a bidirectional link between two notes.
+    func link(noteID: String, toNoteID: String) throws {
+        guard let noteA = try get(id: noteID) else {
+            throw NoteStoreError.notFound(id: noteID)
+        }
+        guard let noteB = try get(id: toNoteID) else {
+            throw NoteStoreError.notFound(id: toNoteID)
+        }
+        if !noteA.linkedNoteIDs.contains(toNoteID) {
+            noteA.linkedNoteIDs.append(toNoteID)
+        }
+        if !noteB.linkedNoteIDs.contains(noteID) {
+            noteB.linkedNoteIDs.append(noteID)
+        }
+        try modelContext.save()
+    }
+
+    /// Remove a bidirectional link between two notes.
+    func unlink(noteID: String, fromNoteID: String) throws {
+        if let noteA = try get(id: noteID) {
+            noteA.linkedNoteIDs.removeAll { $0 == fromNoteID }
+        }
+        if let noteB = try get(id: fromNoteID) {
+            noteB.linkedNoteIDs.removeAll { $0 == noteID }
+        }
+        try modelContext.save()
+    }
+
+    /// Get all notes linked to a given note.
+    func getLinkedNotes(id: String) throws -> [Note] {
+        guard let note = try get(id: id) else {
+            throw NoteStoreError.notFound(id: id)
+        }
+        return try note.linkedNoteIDs.compactMap { try get(id: $0) }
+    }
+
+    // MARK: - Embedding backfill
+
+    /// Recompute embeddings for all notes that don't have one.
+    /// Call on first launch after adding embedding support.
+    func backfillEmbeddings() throws {
+        let predicate = #Predicate<Note> { $0.embedding == nil }
+        let notes = try modelContext.fetch(FetchDescriptor<Note>(predicate: predicate))
+        for note in notes {
+            note.embedding = EmbeddingService.shared.embedNote(
+                title: note.title, body: note.body
+            )
+        }
+        if !notes.isEmpty {
+            try modelContext.save()
+        }
     }
 }
 
@@ -134,8 +199,7 @@ enum NoteStoreError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .notFound(let id):
-            return "Note not found: \(id)"
+        case .notFound(let id): return "Note not found: \(id)"
         }
     }
 }
