@@ -56,9 +56,7 @@ private struct NoteEditorForm: View {
             Section {
                 if showingPreview {
                     ScrollView {
-                        Text(markdownContent)
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        MarkdownView(text: note.body)
                             .padding(.vertical, 4)
                     }
                     .frame(minHeight: 200)
@@ -156,13 +154,6 @@ private struct NoteEditorForm: View {
         .navigationTitle(note.title)
         .navigationBarTitleDisplayMode(.inline)
         .task { await loadSimilarNotes() }
-    }
-
-    /// Parse the note body as markdown for the preview.
-    private var markdownContent: AttributedString {
-        (try? AttributedString(markdown: note.body, options: .init(
-            interpretedSyntax: .full
-        ))) ?? AttributedString(note.body)
     }
 
     /// Notes that are explicitly linked to this one.
