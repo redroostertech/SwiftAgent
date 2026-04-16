@@ -15,8 +15,6 @@ targets:
     platform: iOS
     sources:
       - Sources
-    entitlements:
-      path: Sources/SwiftAgentNotes.entitlements
     dependencies:
       - package: SwiftAgent
         product: SwiftAgent
@@ -33,4 +31,3 @@ targets:
         SWIFT_VERSION: "5.9"
         INFOPLIST_FILE: Sources/Info.plist
         GENERATE_INFOPLIST_FILE: false
-        CODE_SIGN_ENTITLEMENTS: Sources/SwiftAgentNotes.entitlements
