@@ -9,12 +9,39 @@ import SwiftAgent
 /// linking. All SwiftData work is isolated to the actor.
 @ModelActor
 actor NoteStore {
-    /// Process-wide shared instance. Initialized once at app launch.
-    static var shared: NoteStore!
+    /// Process-wide shared instance. Self-initializes on first access
+    /// so AppIntents invoked by Siri (which may skip the app's init)
+    /// always have a working store.
+    private static var _shared: NoteStore?
 
-    /// One-time setup called from the app entry point.
+    static var shared: NoteStore {
+        if let existing = _shared { return existing }
+        let store = NoteStore(modelContainer: Self.makeContainer())
+        _shared = store
+        return store
+    }
+
+    /// Configure with a specific container (called from app launch).
+    /// If already initialized, this is a no-op.
     static func configure(container: ModelContainer) {
-        shared = NoteStore(modelContainer: container)
+        if _shared == nil {
+            _shared = NoteStore(modelContainer: container)
+        }
+    }
+
+    /// Build the default ModelContainer for Notes.
+    private static func makeContainer() -> ModelContainer {
+        do {
+            let schema = Schema([Note.self])
+            let config = ModelConfiguration(
+                "SwiftAgentNotes",
+                schema: schema,
+                isStoredInMemoryOnly: false
+            )
+            return try ModelContainer(for: schema, configurations: [config])
+        } catch {
+            fatalError("Failed to create ModelContainer: \(error)")
+        }
     }
 
     // MARK: - Create
