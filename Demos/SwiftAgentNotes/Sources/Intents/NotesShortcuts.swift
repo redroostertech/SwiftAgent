@@ -33,8 +33,8 @@ struct NotesShortcuts: AppShortcutsProvider {
             intent: SearchNotesIntent(),
             phrases: [
                 "Search notes in \(.applicationName)",
-                "Find notes about \(\.$query) in \(.applicationName)",
-                "Search for \(\.$query) in \(.applicationName)"
+                "Find notes in \(.applicationName)",
+                "Search my notes in \(.applicationName)"
             ],
             shortTitle: "Search Notes",
             systemImageName: "magnifyingglass"
