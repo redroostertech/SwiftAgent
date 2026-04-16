@@ -9,7 +9,7 @@ import SwiftSyntaxMacros
 @main
 struct SwiftAgentMacroPlugin: CompilerPlugin {
     let providingMacros: [any Macro.Type] = [
-        // AgentToolMacro.self,
-        // ParamMacro.self,
+        AgentToolMacro.self,
+        ParamMacro.self,
     ]
 }
