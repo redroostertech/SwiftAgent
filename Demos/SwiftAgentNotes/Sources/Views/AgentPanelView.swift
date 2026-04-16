@@ -18,49 +18,50 @@ struct AgentPanelView: View {
     var body: some View {
         @Bindable var manager = manager
 
-        NavigationStack {
-            Form {
-                if !manager.isReady {
-                    Section {
-                        if let error = manager.errorMessage {
-                            Label(error, systemImage: "exclamationmark.triangle")
-                                .foregroundStyle(.red)
-                        } else {
-                            ProgressView("Starting agent...")
-                        }
+        Form {
+            if !manager.isReady {
+                Section {
+                    if let error = manager.errorMessage {
+                        Label(error, systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(.red)
+                    } else {
+                        ProgressView("Starting agent...")
                     }
-                } else {
-                    toolPickerSection
-                    argumentsSection
-                    invokeSection
-                    resultSection
                 }
-            }
-            .formStyle(.grouped)
-            .navigationTitle("Agent")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
-                }
+            } else {
+                toolPickerSection
+                argumentsSection
+                invokeSection
+                resultSection
             }
         }
+        .formStyle(.grouped)
     }
 
     // MARK: - Sections
 
-    /// Picker for choosing which tool to invoke.
+    /// Picker for choosing which tool to invoke, split by local/remote.
     @ViewBuilder
     private var toolPickerSection: some View {
         @Bindable var manager = manager
 
-        Section("Tool") {
+        Section {
             Picker("Select tool", selection: $manager.selectedToolName) {
-                ForEach(manager.tools, id: \.name) { tool in
-                    Text(displayName(for: tool))
-                        .tag(Optional(tool.name))
+                if !manager.localTools.isEmpty {
+                    Section("Local Tools") {
+                        ForEach(manager.localTools, id: \.name) { tool in
+                            Label(displayName(for: tool), systemImage: "cpu")
+                                .tag(Optional(tool.name))
+                        }
+                    }
+                }
+                if !manager.remoteTools.isEmpty {
+                    Section("Remote Tools") {
+                        ForEach(manager.remoteTools, id: \.name) { tool in
+                            Label(displayName(for: tool), systemImage: "cloud")
+                                .tag(Optional(tool.name))
+                        }
+                    }
                 }
             }
             .pickerStyle(.menu)
@@ -71,9 +72,19 @@ struct AgentPanelView: View {
             }
 
             if let tool = manager.selectedTool {
-                Text(tool.description)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                HStack {
+                    Image(systemName: manager.isSelectedToolRemote ? "cloud" : "cpu")
+                        .foregroundStyle(manager.isSelectedToolRemote ? .blue : .green)
+                    Text(tool.description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } header: {
+            Text("Tool")
+        } footer: {
+            if manager.remoteTools.isEmpty && !manager.isRemoteConnected {
+                Text("Connect to a remote MCP server in Settings to see remote tools here.")
             }
         }
     }

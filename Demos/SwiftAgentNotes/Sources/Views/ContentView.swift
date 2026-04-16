@@ -6,14 +6,17 @@ import SwiftAgent
 /// notes and a detail editor.
 ///
 /// The sidebar lists all notes via ``NoteListView`` and the detail pane
-/// shows ``NoteEditorView`` for the selected note. An "Agent" toolbar
-/// button opens the ``AgentPanelView`` sheet.
+/// shows ``NoteEditorView`` for the selected note. Toolbar buttons
+/// provide access to the Agent panel and Settings.
 struct ContentView: View {
     /// The currently selected note identifier.
     @State private var selectedNoteID: String?
 
     /// Whether the agent panel sheet is presented.
     @State private var isAgentPanelPresented = false
+
+    /// Whether the settings sheet is presented.
+    @State private var isSettingsPresented = false
 
     /// The agent manager driving the tool panel.
     @Environment(NoteAgentManager.self) private var agentManager
@@ -29,6 +32,13 @@ struct ContentView: View {
                             Label("Agent", systemImage: "cpu")
                         }
                     }
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button {
+                            isSettingsPresented = true
+                        } label: {
+                            Label("Settings", systemImage: "gear")
+                        }
+                    }
                 }
         } detail: {
             if let noteID = selectedNoteID {
@@ -42,7 +52,28 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $isAgentPanelPresented) {
-            AgentPanelView()
+            NavigationStack {
+                AgentPanelView()
+                    .navigationTitle("Agent")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Done") { isAgentPanelPresented = false }
+                        }
+                    }
+            }
+        }
+        .sheet(isPresented: $isSettingsPresented) {
+            NavigationStack {
+                SettingsView()
+                    .navigationTitle("Settings")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Done") { isSettingsPresented = false }
+                        }
+                    }
+            }
         }
     }
 }

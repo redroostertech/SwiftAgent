@@ -18,6 +18,8 @@ targets:
     dependencies:
       - package: SwiftAgent
         product: SwiftAgent
+      - package: SwiftAgent
+        product: SwiftAgentHTTPClient
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.swiftagent.demos.notes

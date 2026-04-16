@@ -1,47 +1,83 @@
 import Foundation
 import SwiftAgent
+import SwiftAgentHTTPClient
 import Observation
 
-/// Manages the in-process agent server and client lifecycle.
+/// Manages the in-process agent server, local tool catalog, and optional
+/// remote MCP server connection.
 ///
-/// `NoteAgentManager` owns an ``AgentServer`` with all six note tools
-/// registered, wired to an ``AgentClient`` via in-process transports.
-/// The ``AgentPanelView`` binds to this class to list available tools,
-/// collect arguments through auto-generated forms, invoke tools, and
-/// display results.
+/// `NoteAgentManager` owns both sides of the agent surface:
+///
+/// 1. **Local tools** — registered with an ``AgentServer`` and accessed via
+///    ``AgentClient`` over in-process transports.
+/// 2. **Remote tools** — fetched from an external MCP server entered by
+///    the user in Settings, connected via ``HTTPClientTransport``.
 @Observable
-final class NoteAgentManager {
-    /// The tool catalog fetched from the server after initialization.
-    var tools: [MCPToolDescriptor] = []
+final class NoteAgentManager: @unchecked Sendable {
 
-    /// The currently selected tool name in the agent panel.
+    // MARK: - Local state
+
+    /// Tool descriptors from the local in-process server.
+    private(set) var localTools: [MCPToolDescriptor] = []
+
+    /// Whether the local agent has completed initialization.
+    private(set) var isReady: Bool = false
+
+    /// Error from setup or invocation.
+    private(set) var errorMessage: String?
+
+    // MARK: - Remote state
+
+    /// Tool descriptors from a connected remote MCP server.
+    private(set) var remoteTools: [MCPToolDescriptor] = []
+
+    /// Whether a remote server connection is active.
+    private(set) var isRemoteConnected: Bool = false
+
+    /// Status string for the remote connection.
+    private(set) var remoteStatus: String = "Not connected"
+
+    /// Error from the remote connection attempt.
+    private(set) var remoteError: String?
+
+    // MARK: - Persisted settings
+
+    /// The remote MCP server URL, persisted via UserDefaults.
+    @ObservationIgnored
+    var remoteServerURL: String {
+        get { UserDefaults.standard.string(forKey: "notesRemoteServerURL") ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: "notesRemoteServerURL") }
+    }
+
+    // MARK: - Agent panel state
+
+    /// The currently selected tool name.
     var selectedToolName: String?
 
     /// User-entered argument values keyed by parameter name.
     var argumentValues: [String: String] = [:]
 
-    /// The most recent tool invocation result text.
+    /// The most recent invocation result text.
     var resultText: String?
 
-    /// Whether the result represents an error.
+    /// Whether the result is an error.
     var resultIsError: Bool = false
 
-    /// Whether a tool invocation is currently in flight.
+    /// Whether an invocation is in flight.
     var isInvoking: Bool = false
 
-    /// Whether the agent has completed its initialization handshake.
-    var isReady: Bool = false
+    // MARK: - All tools (merged)
 
-    /// Error message from setup or tool invocation, if any.
-    var errorMessage: String?
+    /// Combined local + remote tool catalog for the agent panel.
+    var allTools: [MCPToolDescriptor] { localTools + remoteTools }
 
-    /// The server instance hosting the note tools.
+    // MARK: - Private
+
     private let server: AgentServer
+    private var localClient: AgentClient?
+    private var remoteClient: AgentClient?
+    private var remoteTransport: HTTPClientTransport?
 
-    /// The client used to call tools on the server.
-    private var client: AgentClient?
-
-    /// Create a new agent manager and prepare the server with all tools.
     init() {
         self.server = AgentServer(
             info: MCPImplementation(
@@ -53,12 +89,11 @@ final class NoteAgentManager {
         )
     }
 
+    // MARK: - Local setup
+
     /// Register all note tools and start the in-process transport.
-    ///
-    /// Call this once at app launch after ``NoteStore`` has been configured.
     func start() async {
         do {
-            // Register all six tools with the server.
             try await server.register(CreateNoteTool.asAgentTool())
             try await server.register(ListNotesTool.asAgentTool())
             try await server.register(SearchNotesTool.asAgentTool())
@@ -66,26 +101,21 @@ final class NoteAgentManager {
             try await server.register(UpdateNoteTool.asAgentTool())
             try await server.register(DeleteNoteTool.asAgentTool())
 
-            // Wire up in-process transports.
             let serverTransport = InProcessServerTransport()
             try await server.start(transport: serverTransport)
 
             let clientTransport = InProcessClientTransport { request in
                 await serverTransport.deliver(request)
             }
-            let agentClient = AgentClient(
-                info: MCPImplementation(
-                    name: "SwiftAgent Notes Client",
-                    version: "1.0.0"
-                ),
+            let client = AgentClient(
+                info: MCPImplementation(name: "Notes Client", version: "1.0.0"),
                 transport: clientTransport
             )
-            try await agentClient.initialize()
-            self.client = agentClient
+            try await client.initialize()
+            self.localClient = client
 
-            // Fetch the tool catalog.
-            let descriptors = try await agentClient.listTools()
-            self.tools = descriptors
+            let descriptors = try await client.listTools()
+            self.localTools = descriptors
             if let first = descriptors.first {
                 self.selectedToolName = first.name
             }
@@ -95,13 +125,70 @@ final class NoteAgentManager {
         }
     }
 
-    /// The descriptor for the currently selected tool, if any.
-    var selectedTool: MCPToolDescriptor? {
-        tools.first { $0.name == selectedToolName }
+    // MARK: - Remote connection
+
+    /// Connect to a remote MCP server at the stored URL.
+    func connectRemote() async {
+        guard !remoteServerURL.isEmpty,
+              let url = URL(string: remoteServerURL) else {
+            remoteError = "Invalid URL"
+            return
+        }
+
+        await disconnectRemote()
+
+        remoteStatus = "Connecting..."
+        remoteError = nil
+
+        do {
+            let transport = HTTPClientTransport(url: url)
+            self.remoteTransport = transport
+
+            let client = AgentClient(
+                info: MCPImplementation(name: "Notes Remote Client", version: "1.0.0"),
+                transport: transport
+            )
+            try await client.initialize()
+            self.remoteClient = client
+
+            let tools = try await client.listTools()
+            self.remoteTools = tools
+            self.isRemoteConnected = true
+            self.remoteStatus = "Connected — \(tools.count) tools"
+        } catch {
+            self.remoteError = error.localizedDescription
+            self.remoteStatus = "Failed"
+            self.isRemoteConnected = false
+        }
     }
 
-    /// The ordered list of property entries from the selected tool's
-    /// input schema, suitable for rendering form fields.
+    /// Disconnect from the remote MCP server.
+    func disconnectRemote() async {
+        if let client = remoteClient {
+            await client.close()
+        }
+        remoteClient = nil
+        remoteTransport = nil
+        remoteTools = []
+        isRemoteConnected = false
+        remoteStatus = "Not connected"
+        remoteError = nil
+    }
+
+    // MARK: - Tool selection
+
+    /// The descriptor for the currently selected tool.
+    var selectedTool: MCPToolDescriptor? {
+        allTools.first { $0.name == selectedToolName }
+    }
+
+    /// Whether the selected tool is a remote tool.
+    var isSelectedToolRemote: Bool {
+        guard let name = selectedToolName else { return false }
+        return remoteTools.contains { $0.name == name }
+    }
+
+    /// Schema properties for the selected tool, for form generation.
     var selectedToolProperties: [(name: String, schema: MCPSchema, isRequired: Bool)] {
         guard let tool = selectedTool,
               let properties = tool.inputSchema.properties else {
@@ -114,8 +201,6 @@ final class NoteAgentManager {
     }
 
     /// Update the selected tool and reset argument values.
-    ///
-    /// - Parameter toolName: The machine name of the tool to select.
     func selectTool(_ toolName: String) {
         selectedToolName = toolName
         argumentValues = [:]
@@ -123,20 +208,25 @@ final class NoteAgentManager {
         resultIsError = false
     }
 
+    // MARK: - Invocation
+
     /// Invoke the selected tool with the current argument values.
-    ///
-    /// Builds a ``JSONValue`` object from ``argumentValues`` and calls
-    /// the tool through the agent client. The result is stored in
-    /// ``resultText``.
     func invoke() async {
-        guard let client, let tool = selectedTool else { return }
+        guard let tool = selectedTool else { return }
+
+        let client: AgentClient?
+        if isSelectedToolRemote {
+            client = remoteClient
+        } else {
+            client = localClient
+        }
+        guard let client else { return }
 
         isInvoking = true
         resultText = nil
         resultIsError = false
         defer { isInvoking = false }
 
-        // Build the arguments object, coercing types based on the schema.
         var args: [String: JSONValue] = [:]
         let properties = tool.inputSchema.properties ?? [:]
         for (key, value) in argumentValues {
@@ -144,16 +234,11 @@ final class NoteAgentManager {
             if let propSchema = properties[key] {
                 switch propSchema.type {
                 case .boolean:
-                    let boolVal = ["true", "yes", "1"].contains(value.lowercased())
-                    args[key] = .bool(boolVal)
+                    args[key] = .bool(["true", "yes", "1"].contains(value.lowercased()))
                 case .integer:
-                    if let intVal = Int64(value) {
-                        args[key] = .int(intVal)
-                    }
+                    if let v = Int64(value) { args[key] = .int(v) }
                 case .number:
-                    if let numVal = Double(value) {
-                        args[key] = .double(numVal)
-                    }
+                    if let v = Double(value) { args[key] = .double(v) }
                 default:
                     args[key] = .string(value)
                 }
