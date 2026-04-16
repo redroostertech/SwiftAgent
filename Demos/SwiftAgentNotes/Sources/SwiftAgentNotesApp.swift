@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import SwiftAgent
+import AppIntents
 
 /// Main entry point for the SwiftAgent Notes demo application.
 ///
@@ -36,6 +37,8 @@ struct SwiftAgentNotesApp: App {
             ContentView()
                 .environment(agentManager)
                 .task {
+                    // Register app shortcuts with Siri.
+                    NotesShortcuts.updateAppShortcutParameters()
                     // Backfill embeddings for existing notes that
                     // predate the embedding feature.
                     try? await NoteStore.shared.backfillEmbeddings()
