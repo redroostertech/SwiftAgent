@@ -101,4 +101,7 @@ print("""
     """)
 
 // Keep running until killed.
-try await Task.sleep(for: .seconds(Double.greatestFiniteMagnitude))
+let _ = await withCheckedContinuation { (_: CheckedContinuation<Void, Never>) in
+    // Block forever. The server runs on its own tasks.
+    // Ctrl+C terminates the process.
+}
