@@ -1,12 +1,13 @@
 import AppIntents
 import SwiftData
 import Foundation
+import os
+
+/// Logger for AppIntent debugging. View in Console.app on Mac
+/// with iPhone connected, filter for "NoteIntents".
+private let logger = Logger(subsystem: "com.swiftagent.demos.notes", category: "NoteIntents")
 
 /// Siri/Shortcuts intent for creating a new note.
-///
-/// Invokable via:
-///   "Create a note in Nolan"
-///   "Make a note in Nolan"
 struct CreateNoteIntent: AppIntent {
     static var title: LocalizedStringResource = "Create Note"
 
@@ -28,20 +29,34 @@ struct CreateNoteIntent: AppIntent {
     }
 
     func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
+        logger.info("CreateNoteIntent.perform() called with title: \(self.noteTitle)")
+
         do {
-            let container = try ModelContainer(for: Note.self)
+            logger.info("Creating ModelContainer...")
+            let schema = Schema([Note.self])
+            let config = ModelConfiguration(
+                "SwiftAgentNotes",
+                schema: schema,
+                isStoredInMemoryOnly: false
+            )
+            let container = try ModelContainer(for: schema, configurations: [config])
+            logger.info("ModelContainer created successfully")
+
             let context = ModelContext(container)
             let note = Note(title: noteTitle, body: body, pinned: pinned)
             context.insert(note)
             try context.save()
+
+            logger.info("Note saved with id: \(note.id)")
             return .result(
                 value: note.id,
                 dialog: "Created note: \(noteTitle)"
             )
         } catch {
+            logger.error("CreateNoteIntent failed: \(error.localizedDescription)")
             return .result(
-                value: "error",
-                dialog: "Failed: \(error.localizedDescription)"
+                value: "error: \(error.localizedDescription)",
+                dialog: "Error: \(error.localizedDescription)"
             )
         }
     }
