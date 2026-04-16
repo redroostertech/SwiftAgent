@@ -7,7 +7,7 @@ import Foundation
 ///
 /// SwiftAgent-specific codes live in ``MCPError``; this type is the raw wire
 /// representation.
-public struct JSONRPCError: Sendable, Codable, Hashable, Error {
+public struct JSONRPCError: Sendable, Codable, Hashable, LocalizedError {
     /// The numeric error code. See the JSON-RPC 2.0 spec and ``MCPError``.
     public let code: Int
 
@@ -30,6 +30,9 @@ public struct JSONRPCError: Sendable, Codable, Hashable, Error {
         self.message = message
         self.data = data
     }
+
+    /// The description surfaced by `localizedDescription`.
+    public var errorDescription: String? { "[\(code)] \(message)" }
 
     // MARK: Standard JSON-RPC 2.0 error codes
 
