@@ -20,6 +20,8 @@ targets:
         product: SwiftAgent
       - package: SwiftAgent
         product: SwiftAgentHTTPClient
+      - package: SwiftAgent
+        product: SwiftAgentOpenAI
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.swiftagent.demos.notes
