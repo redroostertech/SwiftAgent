@@ -83,10 +83,20 @@ try await server.register(AgentTool(
     }
 })
 
-// Wrap the server handler with logging so we can see what's happening.
-let originalServer = server
-let loggingTransport = HTTPServerTransport(port: port)
-try await originalServer.start(transport: loggingTransport)
+// Tool 5: machine_info — proves the response comes from THIS Mac
+try await server.register(AgentTool(
+    name: "machine_info",
+    description: "Returns the hostname and OS of the machine running this server.",
+    annotations: MCPToolAnnotations(readOnly: true, idempotent: true),
+    handler: { _ in
+        let host = ProcessInfo.processInfo.hostName
+        let os = ProcessInfo.processInfo.operatingSystemVersionString
+        return .text("Host: \(host)\nOS: \(os)\nPID: \(ProcessInfo.processInfo.processIdentifier)")
+    }
+))
+
+let transport = HTTPServerTransport(port: port)
+try await server.start(transport: transport)
 
 // Also log every request the server handles by wrapping it.
 // (The HTTPServerTransport logs are internal; we add top-level visibility here.)
