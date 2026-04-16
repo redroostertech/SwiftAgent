@@ -42,20 +42,45 @@ private struct NoteEditorForm: View {
 
     @State private var similarNotes: [(id: String, title: String, score: Double)] = []
     @State private var loadingSimilar = false
+    @State private var showingPreview = false
 
     var body: some View {
         Form {
             Section("Title") {
                 TextField("Note title", text: $note.title)
                     .font(.title2)
+                    .submitLabel(.done)
                     .onChange(of: note.title) { markUpdated() }
             }
 
-            Section("Content") {
-                TextEditor(text: $note.body)
+            Section {
+                if showingPreview {
+                    ScrollView {
+                        Text(markdownContent)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 4)
+                    }
                     .frame(minHeight: 200)
-                    .font(.body)
-                    .onChange(of: note.body) { markUpdated() }
+                } else {
+                    TextEditor(text: $note.body)
+                        .frame(minHeight: 200)
+                        .font(.body)
+                        .onChange(of: note.body) { markUpdated() }
+                }
+            } header: {
+                HStack {
+                    Text("Content")
+                    Spacer()
+                    Button {
+                        showingPreview.toggle()
+                    } label: {
+                        Label(
+                            showingPreview ? "Edit" : "Preview",
+                            systemImage: showingPreview ? "pencil" : "eye"
+                        )
+                        .font(.caption)
+                    }
+                }
             }
 
             Section {
@@ -130,6 +155,13 @@ private struct NoteEditorForm: View {
         .navigationTitle(note.title)
         .navigationBarTitleDisplayMode(.inline)
         .task { await loadSimilarNotes() }
+    }
+
+    /// Parse the note body as markdown for the preview.
+    private var markdownContent: AttributedString {
+        (try? AttributedString(markdown: note.body, options: .init(
+            interpretedSyntax: .inlineOnlyPreservingWhitespace
+        ))) ?? AttributedString(note.body)
     }
 
     /// Notes that are explicitly linked to this one.
