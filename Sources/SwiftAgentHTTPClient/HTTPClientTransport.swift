@@ -136,7 +136,7 @@ public final class HTTPClientTransport: AgentClientTransport, @unchecked Sendabl
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("application/json, text/event-stream", forHTTPHeaderField: "Accept")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
 
         let sid = lock.withLock { sessionId }
 
