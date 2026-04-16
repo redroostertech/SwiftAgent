@@ -16,6 +16,7 @@ struct SettingsView: View {
                     .textContentType(.URL)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
+                    .submitLabel(.done)
                     .onAppear { llmURLText = manager.llmURL }
                 Button("Save") {
                     manager.llmURL = llmURLText
@@ -32,6 +33,7 @@ struct SettingsView: View {
                     .textContentType(.URL)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
+                    .submitLabel(.done)
                     .onAppear { mcpURLText = manager.remoteServerURL }
 
                 HStack {

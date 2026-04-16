@@ -56,6 +56,7 @@ struct AIChatView: View {
                     .textFieldStyle(.plain)
                     .lineLimit(1...4)
                     .focused($isFocused)
+                    .submitLabel(.send)
                     .onSubmit { sendMessage() }
 
                 Button {

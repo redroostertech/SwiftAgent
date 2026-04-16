@@ -187,6 +187,7 @@ struct AgentPanelView: View {
                     set: { values.wrappedValue[name] = $0 }
                 )
             )
+            .submitLabel(.done)
             #if os(iOS)
             .keyboardType(.numberPad)
             #endif
@@ -199,6 +200,7 @@ struct AgentPanelView: View {
                     set: { values.wrappedValue[name] = $0 }
                 )
             )
+            .submitLabel(.done)
             #if os(iOS)
             .keyboardType(.decimalPad)
             #endif
@@ -212,6 +214,7 @@ struct AgentPanelView: View {
                 ),
                 axis: .vertical
             )
+            .submitLabel(.done)
         }
     }
 
