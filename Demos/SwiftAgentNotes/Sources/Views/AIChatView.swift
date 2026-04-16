@@ -89,6 +89,7 @@ struct AIChatView: View {
         let text = inputText.trimmingCharacters(in: .whitespaces)
         guard !text.isEmpty else { return }
         inputText = ""
+        isFocused = false
         Task { await manager.chat(prompt: text) }
     }
 }
