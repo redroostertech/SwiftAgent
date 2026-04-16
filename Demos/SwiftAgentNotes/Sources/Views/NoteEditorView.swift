@@ -57,6 +57,7 @@ private struct NoteEditorForm: View {
                 if showingPreview {
                     ScrollView {
                         Text(markdownContent)
+                            .textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.vertical, 4)
                     }
@@ -160,7 +161,7 @@ private struct NoteEditorForm: View {
     /// Parse the note body as markdown for the preview.
     private var markdownContent: AttributedString {
         (try? AttributedString(markdown: note.body, options: .init(
-            interpretedSyntax: .inlineOnlyPreservingWhitespace
+            interpretedSyntax: .full
         ))) ?? AttributedString(note.body)
     }
 
