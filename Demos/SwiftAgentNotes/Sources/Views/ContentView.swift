@@ -2,23 +2,14 @@ import SwiftUI
 import SwiftData
 import SwiftAgent
 
-/// Root view presenting a two-column navigation split with a sidebar of
-/// notes and a detail editor.
-///
-/// The sidebar lists all notes via ``NoteListView`` and the detail pane
-/// shows ``NoteEditorView`` for the selected note. Toolbar buttons
-/// provide access to the Agent panel and Settings.
+/// Root view with note list, editor, and access to AI Chat, Agent tools,
+/// and Settings.
 struct ContentView: View {
-    /// The currently selected note identifier.
     @State private var selectedNoteID: String?
-
-    /// Whether the agent panel sheet is presented.
     @State private var isAgentPanelPresented = false
-
-    /// Whether the settings sheet is presented.
     @State private var isSettingsPresented = false
+    @State private var isChatPresented = false
 
-    /// The agent manager driving the tool panel.
     @Environment(NoteAgentManager.self) private var agentManager
 
     var body: some View {
@@ -26,10 +17,17 @@ struct ContentView: View {
             NoteListView(selectedNoteID: $selectedNoteID)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarLeading) {
-                        Button {
-                            isAgentPanelPresented = true
-                        } label: {
-                            Label("Agent", systemImage: "cpu")
+                        HStack(spacing: 16) {
+                            Button {
+                                isChatPresented = true
+                            } label: {
+                                Label("AI Chat", systemImage: "sparkles")
+                            }
+                            Button {
+                                isAgentPanelPresented = true
+                            } label: {
+                                Label("Tools", systemImage: "cpu")
+                            }
                         }
                     }
                     ToolbarItem(placement: .navigationBarTrailing) {
@@ -51,10 +49,22 @@ struct ContentView: View {
                 )
             }
         }
+        .sheet(isPresented: $isChatPresented) {
+            NavigationStack {
+                AIChatView()
+                    .navigationTitle("AI Chat")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Done") { isChatPresented = false }
+                        }
+                    }
+            }
+        }
         .sheet(isPresented: $isAgentPanelPresented) {
             NavigationStack {
                 AgentPanelView()
-                    .navigationTitle("Agent")
+                    .navigationTitle("Agent Tools")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {

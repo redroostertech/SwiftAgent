@@ -1,17 +1,11 @@
 import Foundation
 import SwiftAgent
 import SwiftAgentHTTPClient
+import SwiftAgentOpenAI
 import Observation
 
-/// Manages the in-process agent server, local tool catalog, and optional
-/// remote MCP server connection.
-///
-/// `NoteAgentManager` owns both sides of the agent surface:
-///
-/// 1. **Local tools** — registered with an ``AgentServer`` and accessed via
-///    ``AgentClient`` over in-process transports.
-/// 2. **Remote tools** — fetched from an external MCP server entered by
-///    the user in Settings, connected via ``HTTPClientTransport``.
+/// Manages the in-process agent server, optional remote MCP connection,
+/// and the AI chat loop that connects a local LLM (llama.cpp) to tools.
 @Observable
 final class NoteAgentManager: @unchecked Sendable {
 
@@ -26,7 +20,7 @@ final class NoteAgentManager: @unchecked Sendable {
     /// Error from setup or invocation.
     private(set) var errorMessage: String?
 
-    // MARK: - Remote state
+    // MARK: - Remote MCP state
 
     /// Tool descriptors from a connected remote MCP server.
     private(set) var remoteTools: [MCPToolDescriptor] = []
@@ -40,35 +34,35 @@ final class NoteAgentManager: @unchecked Sendable {
     /// Error from the remote connection attempt.
     private(set) var remoteError: String?
 
+    // MARK: - AI Chat state
+
+    /// The conversation history shown in the chat view.
+    private(set) var chatMessages: [ChatBubble] = []
+
+    /// Whether the LLM is currently processing.
+    private(set) var isChatting: Bool = false
+
     // MARK: - Persisted settings
 
-    /// The remote MCP server URL, persisted via UserDefaults.
     @ObservationIgnored
     var remoteServerURL: String {
         get { UserDefaults.standard.string(forKey: "notesRemoteServerURL") ?? "" }
         set { UserDefaults.standard.set(newValue, forKey: "notesRemoteServerURL") }
     }
 
-    // MARK: - Agent panel state
+    @ObservationIgnored
+    var llmURL: String {
+        get { UserDefaults.standard.string(forKey: "notesLLMURL") ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: "notesLLMURL") }
+    }
 
-    /// The currently selected tool name.
+    // MARK: - Manual tool panel state
+
     var selectedToolName: String?
-
-    /// User-entered argument values keyed by parameter name.
     var argumentValues: [String: String] = [:]
-
-    /// The most recent invocation result text.
     var resultText: String?
-
-    /// Whether the result is an error.
     var resultIsError: Bool = false
-
-    /// Whether an invocation is in flight.
     var isInvoking: Bool = false
-
-    // MARK: - All tools (merged)
-
-    /// Combined local + remote tool catalog for the agent panel.
     var allTools: [MCPToolDescriptor] { localTools + remoteTools }
 
     // MARK: - Private
@@ -77,6 +71,7 @@ final class NoteAgentManager: @unchecked Sendable {
     private var localClient: AgentClient?
     private var remoteClient: AgentClient?
     private var remoteTransport: HTTPClientTransport?
+    private var llmConversation: [LLMMessage] = []
 
     init() {
         self.server = AgentServer(
@@ -91,7 +86,6 @@ final class NoteAgentManager: @unchecked Sendable {
 
     // MARK: - Local setup
 
-    /// Register all note tools and start the in-process transport.
     func start() async {
         do {
             try await server.register(CreateNoteTool.asAgentTool())
@@ -125,32 +119,25 @@ final class NoteAgentManager: @unchecked Sendable {
         }
     }
 
-    // MARK: - Remote connection
+    // MARK: - Remote MCP connection
 
-    /// Connect to a remote MCP server at the stored URL.
     func connectRemote() async {
-        guard !remoteServerURL.isEmpty,
-              let url = URL(string: remoteServerURL) else {
+        guard !remoteServerURL.isEmpty, let url = URL(string: remoteServerURL) else {
             remoteError = "Invalid URL"
             return
         }
-
         await disconnectRemote()
-
         remoteStatus = "Connecting..."
         remoteError = nil
-
         do {
             let transport = HTTPClientTransport(url: url)
             self.remoteTransport = transport
-
             let client = AgentClient(
                 info: MCPImplementation(name: "Notes Remote Client", version: "1.0.0"),
                 transport: transport
             )
             try await client.initialize()
             self.remoteClient = client
-
             let tools = try await client.listTools()
             self.remoteTools = tools
             self.isRemoteConnected = true
@@ -162,11 +149,8 @@ final class NoteAgentManager: @unchecked Sendable {
         }
     }
 
-    /// Disconnect from the remote MCP server.
     func disconnectRemote() async {
-        if let client = remoteClient {
-            await client.close()
-        }
+        if let client = remoteClient { await client.close() }
         remoteClient = nil
         remoteTransport = nil
         remoteTools = []
@@ -175,32 +159,24 @@ final class NoteAgentManager: @unchecked Sendable {
         remoteError = nil
     }
 
-    // MARK: - Tool selection
+    // MARK: - Manual tool panel
 
-    /// The descriptor for the currently selected tool.
     var selectedTool: MCPToolDescriptor? {
         allTools.first { $0.name == selectedToolName }
     }
 
-    /// Whether the selected tool is a remote tool.
     var isSelectedToolRemote: Bool {
         guard let name = selectedToolName else { return false }
         return remoteTools.contains { $0.name == name }
     }
 
-    /// Schema properties for the selected tool, for form generation.
     var selectedToolProperties: [(name: String, schema: MCPSchema, isRequired: Bool)] {
-        guard let tool = selectedTool,
-              let properties = tool.inputSchema.properties else {
-            return []
-        }
+        guard let tool = selectedTool, let properties = tool.inputSchema.properties else { return [] }
         let required = Set(tool.inputSchema.required ?? [])
-        return properties
-            .sorted { $0.key < $1.key }
+        return properties.sorted { $0.key < $1.key }
             .map { (name: $0.key, schema: $0.value, isRequired: required.contains($0.key)) }
     }
 
-    /// Update the selected tool and reset argument values.
     func selectTool(_ toolName: String) {
         selectedToolName = toolName
         argumentValues = [:]
@@ -208,18 +184,9 @@ final class NoteAgentManager: @unchecked Sendable {
         resultIsError = false
     }
 
-    // MARK: - Invocation
-
-    /// Invoke the selected tool with the current argument values.
     func invoke() async {
         guard let tool = selectedTool else { return }
-
-        let client: AgentClient?
-        if isSelectedToolRemote {
-            client = remoteClient
-        } else {
-            client = localClient
-        }
+        let client: AgentClient? = isSelectedToolRemote ? remoteClient : localClient
         guard let client else { return }
 
         isInvoking = true
@@ -233,14 +200,10 @@ final class NoteAgentManager: @unchecked Sendable {
             guard !value.isEmpty else { continue }
             if let propSchema = properties[key] {
                 switch propSchema.type {
-                case .boolean:
-                    args[key] = .bool(["true", "yes", "1"].contains(value.lowercased()))
-                case .integer:
-                    if let v = Int64(value) { args[key] = .int(v) }
-                case .number:
-                    if let v = Double(value) { args[key] = .double(v) }
-                default:
-                    args[key] = .string(value)
+                case .boolean: args[key] = .bool(["true", "yes", "1"].contains(value.lowercased()))
+                case .integer: if let v = Int64(value) { args[key] = .int(v) }
+                case .number: if let v = Double(value) { args[key] = .double(v) }
+                default: args[key] = .string(value)
                 }
             } else {
                 args[key] = .string(value)
@@ -248,12 +211,9 @@ final class NoteAgentManager: @unchecked Sendable {
         }
 
         do {
-            let result = try await client.callTool(
-                name: tool.name,
-                arguments: args.isEmpty ? nil : .object(args)
-            )
-            let texts = result.content.compactMap { content -> String? in
-                if case .text(let text) = content { return text }
+            let result = try await client.callTool(name: tool.name, arguments: args.isEmpty ? nil : .object(args))
+            let texts = result.content.compactMap { c -> String? in
+                if case .text(let t) = c { return t }
                 return nil
             }
             resultText = texts.joined(separator: "\n")
@@ -263,4 +223,130 @@ final class NoteAgentManager: @unchecked Sendable {
             resultIsError = true
         }
     }
+
+    // MARK: - AI Chat (LLM + tool calling)
+
+    /// Send a natural language prompt to the LLM and let it decide which
+    /// tools to call. The full agentic loop runs: prompt → LLM → tool
+    /// calls → results → LLM → final response with signature.
+    func chat(prompt: String) async {
+        guard !llmURL.isEmpty, let url = URL(string: llmURL) else {
+            chatMessages.append(ChatBubble(
+                role: .system,
+                text: "Set your LLM URL in Settings first (e.g. http://10.0.0.72:8080/v1/chat/completions)"
+            ))
+            return
+        }
+
+        chatMessages.append(ChatBubble(role: .user, text: prompt))
+        isChatting = true
+        defer { isChatting = false }
+
+        let startTime = ContinuousClock.now
+
+        // Initialize conversation if empty
+        if llmConversation.isEmpty {
+            llmConversation.append(LLMMessage(
+                role: "system",
+                content: "You are a helpful notes assistant. Use the available tools to manage the user's notes. Be concise."
+            ))
+        }
+        llmConversation.append(LLMMessage(role: "user", content: prompt))
+
+        // Build OpenAI-format tools from all available tools
+        let openAITools = OpenAIToolExport.export(allTools)
+
+        var modelName = "unknown"
+        var toolsUsed: [String] = []
+        var iterations = 5
+
+        while iterations > 0 {
+            iterations -= 1
+
+            let requestBody = LLMRequest(
+                model: "qwen3.5",
+                messages: llmConversation,
+                tools: openAITools.arrayValue,
+                tool_choice: "auto"
+            )
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try? JSONEncoder().encode(requestBody)
+            request.timeoutInterval = 120
+
+            do {
+                let (data, _) = try await URLSession.shared.data(for: request)
+                let response = try JSONDecoder().decode(LLMResponse.self, from: data)
+                modelName = response.model ?? "unknown"
+
+                guard let choice = response.choices.first else {
+                    chatMessages.append(ChatBubble(role: .system, text: "No response from LLM."))
+                    break
+                }
+
+                llmConversation.append(choice.message.toLLMMessage())
+
+                guard let calls = choice.message.tool_calls, !calls.isEmpty else {
+                    // Final response — no more tool calls
+                    let elapsed = ContinuousClock.now - startTime
+                    let seconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
+                    let text = choice.message.content ?? "(no response)"
+                    var signature = "Performed by \(modelName)"
+                    if !toolsUsed.isEmpty {
+                        signature += " using \(toolsUsed.joined(separator: ", "))"
+                    }
+                    signature += String(format: " in %.1fs", seconds)
+                    chatMessages.append(ChatBubble(role: .assistant, text: text, signature: signature))
+                    break
+                }
+
+                // Execute tool calls
+                for call in calls {
+                    toolsUsed.append(call.function.name)
+                    chatMessages.append(ChatBubble(role: .tool, text: "Calling \(call.function.name)..."))
+
+                    var args: JSONValue = .object([:])
+                    if let argData = call.function.arguments.data(using: .utf8),
+                       let parsed = try? JSONDecoder.swiftAgent.decode(JSONValue.self, from: argData) {
+                        args = parsed
+                    }
+
+                    // Route to the right client
+                    let isRemote = remoteTools.contains { $0.name == call.function.name }
+                    let client: AgentClient? = isRemote ? remoteClient : localClient
+
+                    var resultText = "Error: no client available"
+                    if let client {
+                        do {
+                            let result = try await client.callTool(name: call.function.name, arguments: args)
+                            let texts = result.content.compactMap { c -> String? in
+                                if case .text(let t) = c { return t }
+                                if case .json(let j) = c, let d = try? JSONEncoder.swiftAgent.encode(j) {
+                                    return String(data: d, encoding: .utf8)
+                                }
+                                return nil
+                            }
+                            resultText = texts.joined(separator: "\n")
+                        } catch {
+                            resultText = "Error: \(error.localizedDescription)"
+                        }
+                    }
+
+                    llmConversation.append(LLMMessage(role: "tool", content: resultText, tool_call_id: call.id))
+                }
+            } catch {
+                chatMessages.append(ChatBubble(role: .system, text: "LLM error: \(error.localizedDescription)"))
+                break
+            }
+        }
+    }
+
+    /// Clear the chat history and LLM conversation context.
+    func clearChat() {
+        chatMessages = []
+        llmConversation = []
+    }
 }
+

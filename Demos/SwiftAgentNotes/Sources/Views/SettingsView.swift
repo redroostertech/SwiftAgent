@@ -1,25 +1,38 @@
 import SwiftUI
 
-/// Settings view for configuring an external MCP server connection.
-///
-/// The user enters a server URL, taps Connect, and the app establishes
-/// an MCP session via ``HTTPClientTransport``. Once connected, remote
-/// tools appear alongside local tools in the Agent panel.
+/// Settings view for configuring the LLM and MCP server connections.
 struct SettingsView: View {
     @Environment(NoteAgentManager.self) private var manager
 
-    @State private var urlText: String = ""
+    @State private var mcpURLText: String = ""
+    @State private var llmURLText: String = ""
 
     var body: some View {
         @Bindable var manager = manager
 
         Form {
-            Section("Remote MCP Server") {
-                TextField("Server URL", text: $urlText)
+            Section {
+                TextField("LLM URL", text: $llmURLText)
                     .textContentType(.URL)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
-                    .onAppear { urlText = manager.remoteServerURL }
+                    .onAppear { llmURLText = manager.llmURL }
+                Button("Save") {
+                    manager.llmURL = llmURLText
+                }
+                .disabled(llmURLText.isEmpty)
+            } header: {
+                Text("LLM Server (llama.cpp)")
+            } footer: {
+                Text("OpenAI-compatible endpoint, e.g. http://10.0.0.72:8080/v1/chat/completions")
+            }
+
+            Section("Remote MCP Server") {
+                TextField("MCP Server URL", text: $mcpURLText)
+                    .textContentType(.URL)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .onAppear { mcpURLText = manager.remoteServerURL }
 
                 HStack {
                     Text("Status")
@@ -38,18 +51,14 @@ struct SettingsView: View {
             Section {
                 if manager.isRemoteConnected {
                     Button("Disconnect", role: .destructive) {
-                        Task {
-                            await manager.disconnectRemote()
-                        }
+                        Task { await manager.disconnectRemote() }
                     }
                 } else {
                     Button("Connect") {
-                        manager.remoteServerURL = urlText
-                        Task {
-                            await manager.connectRemote()
-                        }
+                        manager.remoteServerURL = mcpURLText
+                        Task { await manager.connectRemote() }
                     }
-                    .disabled(urlText.isEmpty)
+                    .disabled(mcpURLText.isEmpty)
                 }
             }
 
