@@ -352,5 +352,15 @@ final class NoteAgentManager: @unchecked Sendable {
         chatMessages = []
         llmConversation = []
     }
+
+    /// Show a welcome message if the chat is empty.
+    func showWelcomeIfNeeded() {
+        if chatMessages.isEmpty {
+            chatMessages.append(ChatBubble(
+                role: .system,
+                text: "I can help you manage your notes. Try: \"Create a note about...\", \"List my notes\", \"Search for...\", or \"Find notes similar to...\""
+            ))
+        }
+    }
 }
 

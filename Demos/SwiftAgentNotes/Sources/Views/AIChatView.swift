@@ -39,7 +39,11 @@ struct AIChatView: View {
                 }
                 .onChange(of: manager.chatMessages.count) { _, _ in
                     withAnimation {
-                        proxy.scrollTo(manager.chatMessages.last?.id ?? "loading", anchor: .bottom)
+                        if let lastID = manager.chatMessages.last?.id {
+                            proxy.scrollTo(lastID, anchor: .bottom)
+                        } else {
+                            proxy.scrollTo("loading", anchor: .bottom)
+                        }
                     }
                 }
             }
@@ -76,12 +80,7 @@ struct AIChatView: View {
             }
         }
         .onAppear {
-            if manager.chatMessages.isEmpty {
-                manager.chatMessages.append(ChatBubble(
-                    role: .system,
-                    text: "I can help you manage your notes. Try: \"Create a note about...\", \"List my notes\", \"Search for...\", or \"Delete the note about...\""
-                ))
-            }
+            manager.showWelcomeIfNeeded()
         }
     }
 
