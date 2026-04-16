@@ -1,7 +1,7 @@
 import Foundation
 import SwiftAgentCore
 
-/// The agent-side entry point for talking to an AppMCP server.
+/// The agent-side entry point for talking to an SwiftAgent server.
 ///
 /// `AgentClient` is the counterpart to ``AgentServer``: it performs
 /// the initialize handshake, manages JSON-RPC request ids, maps

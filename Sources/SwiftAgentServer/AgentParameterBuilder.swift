@@ -1,12 +1,12 @@
 import Foundation
 
 /// Result builder that powers the declarative parameter list inside an
-/// ``AppMCPTool`` definition.
+/// ``AgentTool`` definition.
 ///
 /// It lets you write:
 ///
 /// ```swift
-/// AppMCPTool(name: "create_note", description: "...") {
+/// AgentTool(name: "create_note", description: "...") {
 ///     .string("title", description: "Note title")
 ///     .string("body", description: "Markdown body")
 ///     .boolean("pinned", description: "Pin to top", isRequired: false)
@@ -17,55 +17,55 @@ import Foundation
 ///
 /// Supports `if`/`else`, `for ... in`, and optional parameters via `if let`,
 /// matching the shape of every other Swift result builder. Produces an
-/// ordered `[AppMCPParameter]` — order is preserved so that deterministic
+/// ordered `[AgentParameter]` — order is preserved so that deterministic
 /// UIs can render parameters in the order the developer declared them.
 @resultBuilder
 public enum AgentParameterBuilder {
     /// Combine a variadic list of parameters into a single array. This is
     /// the common path — most call sites hit this overload.
-    public static func buildBlock(_ components: AppMCPParameter...) -> [AppMCPParameter] {
+    public static func buildBlock(_ components: AgentParameter...) -> [AgentParameter] {
         components
     }
 
     /// Combine arrays from nested statements (for example inside `for` loops).
-    public static func buildBlock(_ components: [AppMCPParameter]...) -> [AppMCPParameter] {
+    public static func buildBlock(_ components: [AgentParameter]...) -> [AgentParameter] {
         components.flatMap { $0 }
     }
 
     /// Lift a single parameter into a one-element array for use inside
     /// `if` statements.
-    public static func buildExpression(_ expression: AppMCPParameter) -> [AppMCPParameter] {
+    public static func buildExpression(_ expression: AgentParameter) -> [AgentParameter] {
         [expression]
     }
 
     /// Pass an already-assembled array through unchanged.
-    public static func buildExpression(_ expression: [AppMCPParameter]) -> [AppMCPParameter] {
+    public static func buildExpression(_ expression: [AgentParameter]) -> [AgentParameter] {
         expression
     }
 
     /// Handle `if` statements without an `else` branch — the unconditional
     /// path produces the components, a missing branch produces an empty list.
-    public static func buildOptional(_ component: [AppMCPParameter]?) -> [AppMCPParameter] {
+    public static func buildOptional(_ component: [AgentParameter]?) -> [AgentParameter] {
         component ?? []
     }
 
     /// Handle `if` statements with an `else` branch (true case).
-    public static func buildEither(first component: [AppMCPParameter]) -> [AppMCPParameter] {
+    public static func buildEither(first component: [AgentParameter]) -> [AgentParameter] {
         component
     }
 
     /// Handle `if` statements with an `else` branch (false case).
-    public static func buildEither(second component: [AppMCPParameter]) -> [AppMCPParameter] {
+    public static func buildEither(second component: [AgentParameter]) -> [AgentParameter] {
         component
     }
 
     /// Handle `for ... in` loops by flattening the per-iteration arrays.
-    public static func buildArray(_ components: [[AppMCPParameter]]) -> [AppMCPParameter] {
+    public static func buildArray(_ components: [[AgentParameter]]) -> [AgentParameter] {
         components.flatMap { $0 }
     }
 
     /// Handle `if #available` and similar compile-time conditional blocks.
-    public static func buildLimitedAvailability(_ component: [AppMCPParameter]) -> [AppMCPParameter] {
+    public static func buildLimitedAvailability(_ component: [AgentParameter]) -> [AgentParameter] {
         component
     }
 }

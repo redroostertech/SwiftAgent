@@ -3,7 +3,7 @@ import SwiftAgentCore
 
 /// A runnable tool registered with an ``AgentServer``.
 ///
-/// `AppMCPTool` is the declarative façade over the MCP tool surface.
+/// `AgentTool` is the declarative façade over the MCP tool surface.
 /// Developers describe a tool once — its name, what it does, what
 /// arguments it accepts, and how to run it — and the framework:
 ///
@@ -22,7 +22,7 @@ import SwiftAgentCore
 /// ### Example
 ///
 /// ```swift
-/// let createNote = AppMCPTool(
+/// let createNote = AgentTool(
 ///     name: "create_note",
 ///     title: "Create Note",
 ///     description: "Create a new note with a title and body.",
@@ -49,7 +49,7 @@ import SwiftAgentCore
 /// > rather than `.xxx(...)`. Swift's parser treats a line that begins
 /// > with `.` as a continuation of the previous expression, which
 /// > breaks a multi-parameter result-builder block.
-public struct AppMCPTool: Sendable {
+public struct AgentTool: Sendable {
     /// The handler signature run when a `tools/call` arrives. Handlers are
     /// `async throws` so they can do real work (I/O, Core Data, etc.) and
     /// surface typed errors that become JSON-RPC errors automatically.
@@ -65,7 +65,7 @@ public struct AppMCPTool: Sendable {
     public let description: String
 
     /// Parameter declarations in the order they should be rendered.
-    public let parameters: [AppMCPParameter]
+    public let parameters: [AgentParameter]
 
     /// Optional behavioral annotations (read-only, destructive, etc.).
     public let annotations: MCPToolAnnotations?
@@ -92,7 +92,7 @@ public struct AppMCPTool: Sendable {
         description: String,
         annotations: MCPToolAnnotations? = nil,
         outputSchema: MCPSchema? = nil,
-        @AgentParameterBuilder parameters: () -> [AppMCPParameter] = { [] },
+        @AgentParameterBuilder parameters: () -> [AgentParameter] = { [] },
         handler: @escaping Handler
     ) {
         self.name = name
@@ -133,7 +133,7 @@ public struct AppMCPTool: Sendable {
     }
 
     /// Internal: lookup table for argument validation.
-    internal var parametersByName: [String: AppMCPParameter] {
+    internal var parametersByName: [String: AgentParameter] {
         Dictionary(uniqueKeysWithValues: parameters.map { ($0.name, $0) })
     }
 }

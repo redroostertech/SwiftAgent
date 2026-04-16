@@ -10,7 +10,7 @@ import SwiftAgentCore
 ///    network listener or dealing with ports and timeouts.
 /// 2. **Same-app agents.** An app that hosts its own LLM (for example, a
 ///    local "chat with your notes" experience) can expose its own
-///    `AppMCPTool`s to that in-process agent with zero ceremony. This is
+///    `AgentTool`s to that in-process agent with zero ceremony. This is
 ///    a surprisingly common production case on-device.
 /// 3. **Embedded MCP bridging.** Another subsystem in the same process
 ///    (a scripting engine, a Shortcut, an `AppIntent` perform-block)

@@ -1,8 +1,8 @@
 import Foundation
 
-/// Version of the AppMCP wire protocol implemented by this package.
+/// Version of the SwiftAgent wire protocol implemented by this package.
 ///
-/// AppMCP follows the Model Context Protocol naming convention of using a
+/// SwiftAgent follows the Model Context Protocol naming convention of using a
 /// date-based version string. Bump this when you make a breaking change to
 /// any on-the-wire message structure. Minor non-breaking additions (new
 /// optional fields) do **not** require a version bump — clients are

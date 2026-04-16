@@ -9,7 +9,7 @@ import SwiftAgentCore
 /// a ``JSONRPCRequest`` and returns the matching response — typically
 /// `{ await server.handle($0) }` for a directly-owned server instance.
 ///
-/// This is the cleanest way to run an AppMCP server and client in the
+/// This is the cleanest way to run an SwiftAgent server and client in the
 /// same process — common in unit tests and in apps that host their own
 /// LLM and want to expose the same tool surface to it that they would
 /// expose to an external agent.

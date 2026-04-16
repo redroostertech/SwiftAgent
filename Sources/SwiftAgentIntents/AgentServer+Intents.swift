@@ -10,8 +10,8 @@ public extension AgentServer {
     /// Register an `AppIntent`-based tool on the server.
     ///
     /// This is the one-liner consuming apps use to expose a Siri /
-    /// Shortcuts intent through AppMCP. The framework builds an
-    /// ``AppMCPTool`` whose descriptor is derived from the intent's
+    /// Shortcuts intent through SwiftAgent. The framework builds an
+    /// ``AgentTool`` whose descriptor is derived from the intent's
     /// ``AgentExposableIntent`` metadata and whose handler forwards
     /// into ``AgentExposableIntent/mcpPerform(_:)``.
     ///
@@ -24,7 +24,7 @@ public extension AgentServer {
     /// try await AgentServer.shared.register(intent: CreateNoteIntent.self)
     /// ```
     func register<I: AgentExposableIntent>(intent intentType: I.Type) throws {
-        let tool = AppMCPTool(
+        let tool = AgentTool(
             name: I.mcpName,
             title: I.mcpTitle,
             description: I.mcpDescription,

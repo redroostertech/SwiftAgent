@@ -2,7 +2,7 @@ import Foundation
 
 /// Parameters for the `initialize` request sent by the client to the server.
 ///
-/// The initialize handshake is the very first request on any AppMCP
+/// The initialize handshake is the very first request on any SwiftAgent
 /// connection. The server inspects the offered protocol version and
 /// capabilities and responds with its own ``MCPInitializeResult``. If the
 /// versions are incompatible the server responds with

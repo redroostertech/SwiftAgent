@@ -1,7 +1,7 @@
 import Foundation
 import SwiftAgentCore
 
-/// The runtime host of an AppMCP server.
+/// The runtime host of an SwiftAgent server.
 ///
 /// `AgentServer` owns three things:
 ///
@@ -35,12 +35,12 @@ import SwiftAgentCore
 public actor AgentServer {
     /// Process-global default server. Safe to use from any thread.
     ///
-    /// Apps that only ever expose one AppMCP surface can register all
+    /// Apps that only ever expose one SwiftAgent surface can register all
     /// their tools against ``shared`` at launch; tests should prefer
     /// building a dedicated instance to avoid cross-test state.
     public static let shared = AgentServer(
         info: MCPImplementation(
-            name: "AppMCP Server",
+            name: "SwiftAgent Server",
             version: "1.0.0",
             bundleIdentifier: Bundle.main.bundleIdentifier
         )
@@ -73,14 +73,14 @@ public actor AgentServer {
     ///
     /// - Parameter tool: The tool to expose.
     /// - Throws: ``MCPError`` on duplicate registration.
-    public func register(_ tool: AppMCPTool) throws {
+    public func register(_ tool: AgentTool) throws {
         try registry.register(tool)
     }
 
     /// Replace any existing tool of the same name, or register a new one
     /// if the name is not taken. Intended for hot reloads during
     /// development.
-    public func replace(_ tool: AppMCPTool) {
+    public func replace(_ tool: AgentTool) {
         registry.replace(tool)
     }
 

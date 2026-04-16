@@ -3,14 +3,14 @@ import Network
 
 /// Newline-delimited message reader for an `NWConnection`.
 ///
-/// AppMCP frames each JSON-RPC message on a single line terminated by
+/// SwiftAgent frames each JSON-RPC message on a single line terminated by
 /// `\n` (LF, `0x0A`). `LineReader` bridges that framing onto the
 /// callback-based `NWConnection.receive` API: it accumulates bytes,
 /// emits one `Data` per completed line, and re-arms the next read
 /// automatically until the connection closes.
 ///
 /// The reader is intentionally minimal — no backpressure, no windowing
-/// — because AppMCP payloads are tiny (tool calls, not file transfers).
+/// — because SwiftAgent payloads are tiny (tool calls, not file transfers).
 /// A single line is bounded by whatever the peer can generate in one
 /// JSON object; in practice that is well under 1 MB.
 final class LineReader: @unchecked Sendable {

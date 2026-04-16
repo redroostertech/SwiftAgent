@@ -9,7 +9,7 @@ import Foundation
 /// `Hashable`, and `Codable`, so clients do not have to reason about it
 /// being a class.
 ///
-/// AppMCP uses `Box` inside ``MCPSchema`` to represent `items`, letting one
+/// SwiftAgent uses `Box` inside ``MCPSchema`` to represent `items`, letting one
 /// schema describe the element type of another without a layout cycle.
 public final class Box<Value: Sendable & Hashable & Codable>: @unchecked Sendable, Hashable, Codable {
     /// The wrapped value. Immutable after construction.

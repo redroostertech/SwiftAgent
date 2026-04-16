@@ -4,7 +4,7 @@ import SwiftAgentCore
 /// The tool catalog owned by an ``AgentServer``.
 ///
 /// `AgentToolRegistry` is a small, actor-hosted store that maps a tool
-/// name to its runnable ``AppMCPTool``. It enforces uniqueness on
+/// name to its runnable ``AgentTool``. It enforces uniqueness on
 /// registration, provides O(1) lookup on dispatch, and exposes an
 /// ordered snapshot suitable for `tools/list` responses — the order
 /// matches registration order so clients see a deterministic catalog.
@@ -14,7 +14,7 @@ import SwiftAgentCore
 /// unit-tested in isolation and so the server actor stays focused on
 /// session lifecycle.
 public struct AgentToolRegistry: Sendable {
-    private var tools: [String: AppMCPTool] = [:]
+    private var tools: [String: AgentTool] = [:]
     private var order: [String] = []
 
     /// Build an empty registry.
@@ -28,7 +28,7 @@ public struct AgentToolRegistry: Sendable {
     /// - Parameter tool: The tool to register.
     /// - Throws: ``MCPError/custom(code:message:data:)`` when a duplicate
     ///   name is detected.
-    public mutating func register(_ tool: AppMCPTool) throws {
+    public mutating func register(_ tool: AgentTool) throws {
         if tools[tool.name] != nil {
             throw MCPError.custom(
                 code: -32050,
@@ -42,7 +42,7 @@ public struct AgentToolRegistry: Sendable {
     /// Replace any previously registered tool with the given name,
     /// inserting it if it did not exist. Unlike ``register(_:)`` this
     /// never throws — intended for hot reloads.
-    public mutating func replace(_ tool: AppMCPTool) {
+    public mutating func replace(_ tool: AgentTool) {
         if tools[tool.name] == nil {
             order.append(tool.name)
         }
@@ -57,7 +57,7 @@ public struct AgentToolRegistry: Sendable {
     }
 
     /// Look up a tool by name.
-    public func tool(named name: String) -> AppMCPTool? {
+    public func tool(named name: String) -> AgentTool? {
         tools[name]
     }
 
@@ -68,7 +68,7 @@ public struct AgentToolRegistry: Sendable {
     }
 
     /// The full list of registered runnable tools in registration order.
-    public var allTools: [AppMCPTool] {
+    public var allTools: [AgentTool] {
         order.compactMap { tools[$0] }
     }
 

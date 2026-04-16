@@ -2,7 +2,7 @@ import Foundation
 import Network
 import SwiftAgentCore
 
-/// Zero-config discovery of AppMCP servers on the local device and LAN.
+/// Zero-config discovery of SwiftAgent servers on the local device and LAN.
 ///
 /// `AgentServiceBrowser` wraps `NWBrowser` to discover any service
 /// advertised as ``NetworkServerTransport/bonjourServiceType``
@@ -20,7 +20,7 @@ import SwiftAgentCore
 /// Apps that forget either key will see an immediate browser failure
 /// at runtime, not a permission prompt.
 public final class AgentServiceBrowser: @unchecked Sendable {
-    /// A single discovered AppMCP server.
+    /// A single discovered SwiftAgent server.
     public struct DiscoveredService: Sendable, Hashable {
         /// Bonjour service name (usually the app's display name).
         public let name: String
@@ -101,7 +101,7 @@ public final class AgentServiceBrowser: @unchecked Sendable {
         browser = nil
     }
 
-    /// Convert an `NWBrowser.Result` into the AppMCP-friendly
+    /// Convert an `NWBrowser.Result` into the SwiftAgent-friendly
     /// ``DiscoveredService`` shape, extracting the name and TXT record.
     private static func describe(_ result: NWBrowser.Result) -> DiscoveredService? {
         guard case .service(let name, _, _, _) = result.endpoint else { return nil }

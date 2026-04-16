@@ -22,7 +22,7 @@ final class AgentEndToEndTests: XCTestCase {
             instructions: "Test instructions for the agent."
         )
 
-        try await server.register(AppMCPTool(
+        try await server.register(AgentTool(
             name: "echo",
             description: "Echo a string back.",
             annotations: MCPToolAnnotations(readOnly: true, idempotent: true)
@@ -33,7 +33,7 @@ final class AgentEndToEndTests: XCTestCase {
             return .text(message)
         })
 
-        try await server.register(AppMCPTool(
+        try await server.register(AgentTool(
             name: "add",
             description: "Add two integers together.",
             annotations: MCPToolAnnotations(readOnly: true, idempotent: true)

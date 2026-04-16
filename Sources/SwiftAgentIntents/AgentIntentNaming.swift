@@ -1,6 +1,6 @@
 import Foundation
 
-/// Naming helpers for AppMCP-exposed intents.
+/// Naming helpers for SwiftAgent-exposed intents.
 ///
 /// Intent type names follow Swift's `PascalCase` convention
 /// (`CreateNoteIntent`), while MCP tool names on the wire follow a

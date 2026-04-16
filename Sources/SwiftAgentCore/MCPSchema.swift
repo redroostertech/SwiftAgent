@@ -1,9 +1,9 @@
 import Foundation
 
-/// A tiny, JSON-Schema-flavored type description used for AppMCP tool inputs
+/// A tiny, JSON-Schema-flavored type description used for SwiftAgent tool inputs
 /// and outputs.
 ///
-/// AppMCP intentionally supports a narrow subset of JSON Schema Draft 7 — the
+/// SwiftAgent intentionally supports a narrow subset of JSON Schema Draft 7 — the
 /// parts LLM tool callers actually use. This keeps wire payloads compact,
 /// schemas easy to author by hand, and validation tractable. More exotic
 /// features (`allOf`, `oneOf`, `$ref`, custom formats) can be layered on by
@@ -46,7 +46,7 @@ public struct MCPSchema: Sendable, Hashable, Codable {
     /// If present, the value must exactly equal this value.
     public var const: JSONValue?
     /// Optional format hint such as `"uri"`, `"email"`, `"date-time"`.
-    /// AppMCP does not enforce formats — they are a hint to callers.
+    /// SwiftAgent does not enforce formats — they are a hint to callers.
     public var format: String?
     /// Inclusive lower bound for numeric values.
     public var minimum: Double?
@@ -57,13 +57,13 @@ public struct MCPSchema: Sendable, Hashable, Codable {
     /// Maximum permitted length of a string (in characters).
     public var maxLength: Int?
     /// Default value surfaced to UIs and LLM tool callers when the caller
-    /// omits this field. AppMCP does not auto-populate defaults — they are
+    /// omits this field. SwiftAgent does not auto-populate defaults — they are
     /// advisory.
     public var defaultValue: JSONValue?
     /// When `false`, object values may not contain keys that are not listed
     /// in ``properties``. When `true` or `nil`, additional keys are allowed.
     public var additionalProperties: Bool?
-    /// Escape hatch for JSON Schema keywords AppMCP does not model
+    /// Escape hatch for JSON Schema keywords SwiftAgent does not model
     /// natively. Stored but not round-tripped through the generated
     /// `Codable` conformance.
     public var extra: [String: JSONValue]?

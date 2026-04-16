@@ -5,7 +5,7 @@ import Foundation
 /// Conforms to `Error` so implementations can `throw` it directly from
 /// request handlers and the transport will package it into a response.
 ///
-/// AppMCP-specific codes live in ``MCPError``; this type is the raw wire
+/// SwiftAgent-specific codes live in ``MCPError``; this type is the raw wire
 /// representation.
 public struct JSONRPCError: Sendable, Codable, Hashable, Error {
     /// The numeric error code. See the JSON-RPC 2.0 spec and ``MCPError``.
@@ -15,7 +15,7 @@ public struct JSONRPCError: Sendable, Codable, Hashable, Error {
     public let message: String
 
     /// Optional structured metadata about the error, for programmatic use
-    /// by clients. AppMCP uses this to attach the offending tool name,
+    /// by clients. SwiftAgent uses this to attach the offending tool name,
     /// protocol version lists, and validation error paths.
     public let data: JSONValue?
 

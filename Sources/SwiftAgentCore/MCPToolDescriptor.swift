@@ -1,11 +1,11 @@
 import Foundation
 
-/// A tool advertised by an AppMCP server to its clients.
+/// A tool advertised by an SwiftAgent server to its clients.
 ///
 /// A descriptor is pure metadata: it names the tool, describes its purpose
 /// in natural language, and declares the JSON shape of its inputs (and
 /// optionally outputs). Server-side runtime code lives separately — see
-/// ``AppMCPTool`` in the `AgentServer` module for the executable form.
+/// ``AgentTool`` in the `AgentServer` module for the executable form.
 public struct MCPToolDescriptor: Sendable, Hashable, Codable {
     /// The tool's machine-readable name. Must be unique within a server.
     /// Convention: lower snake case (`create_note`, `search_messages`).

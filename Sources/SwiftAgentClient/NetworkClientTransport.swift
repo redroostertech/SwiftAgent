@@ -2,7 +2,7 @@ import Foundation
 import Network
 import SwiftAgentCore
 
-/// TCP client transport that speaks the AppMCP newline-delimited
+/// TCP client transport that speaks the SwiftAgent newline-delimited
 /// JSON-RPC wire format to a `NetworkServerTransport` (or any
 /// compatible peer).
 ///

@@ -4,7 +4,7 @@ import Foundation
 ///
 /// A request is either a *call* (when `id` is non-nil — the sender expects a
 /// matching ``JSONRPCResponse``) or a *notification* (when `id` is nil — the
-/// sender expects no response). AppMCP uses notifications for
+/// sender expects no response). SwiftAgent uses notifications for
 /// `notifications/initialized`, `notifications/cancelled`, and list-changed
 /// events.
 public struct JSONRPCRequest: Sendable, Codable, Hashable {

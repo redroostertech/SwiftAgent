@@ -1,17 +1,17 @@
 import Foundation
 
-/// Errors raised by AppMCP at the protocol and tool-invocation layers.
+/// Errors raised by SwiftAgent at the protocol and tool-invocation layers.
 ///
 /// `MCPError` maps cleanly onto JSON-RPC errors via ``jsonRPCError``, so
 /// handlers can `throw` a typed Swift error and the transport renders the
 /// correct wire format automatically.
 ///
-/// AppMCP reserves the following numeric ranges inside the JSON-RPC
+/// SwiftAgent reserves the following numeric ranges inside the JSON-RPC
 /// "server error" space (−32000 … −32099) and its own tool range:
 ///
 /// | Range                | Meaning                                   |
 /// |----------------------|-------------------------------------------|
-/// | −32000 … −32099      | Protocol-level AppMCP errors              |
+/// | −32000 … −32099      | Protocol-level SwiftAgent errors              |
 /// | −32100 … −32199      | Tool-execution errors                     |
 ///
 /// Use ``custom(code:message:data:)`` to surface an error from your own

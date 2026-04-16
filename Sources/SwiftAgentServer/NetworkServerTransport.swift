@@ -2,11 +2,11 @@ import Foundation
 import Network
 import SwiftAgentCore
 
-/// TCP + Bonjour server transport for AppMCP.
+/// TCP + Bonjour server transport for SwiftAgent.
 ///
 /// `NetworkServerTransport` hosts the server on a local `NWListener`,
 /// advertises the service over Bonjour so clients can find it with no
-/// manual address configuration, and speaks the standard AppMCP wire
+/// manual address configuration, and speaks the standard SwiftAgent wire
 /// format: newline-delimited JSON-RPC, one message per line.
 ///
 /// ### Where it fits best
@@ -23,11 +23,11 @@ import SwiftAgentCore
 /// - On iOS and iPadOS, the OS aggressively suspends backgrounded apps.
 ///   The listener therefore only accepts connections while the app is
 ///   foregrounded (plus a short grace period on backgrounding). This
-///   transport still makes sense when the AppMCP-consuming app is
+///   transport still makes sense when the SwiftAgent-consuming app is
 ///   already the focus — for example, an "expose my current document
 ///   to the agent running on my Mac" flow — but it is **not** the right
 ///   path for "agent reaches into app B while app A is foregrounded"
-///   scenarios. Use the App Intents bridge in the `AppMCPIntents` module
+///   scenarios. Use the App Intents bridge in the `SwiftAgentIntents` module
 ///   for that.
 ///
 /// ### Permissions
@@ -37,14 +37,14 @@ import SwiftAgentCore
 /// must add the keys listed in the package README (``NSLocalNetworkUsageDescription``
 /// and ``NSBonjourServices``) to their `Info.plist`.
 public final class NetworkServerTransport: AgentServerTransport, @unchecked Sendable {
-    /// The Bonjour service type AppMCP advertises. Forwarded from
+    /// The Bonjour service type SwiftAgent advertises. Forwarded from
     /// ``AgentBonjour/serviceType`` for call-site brevity.
     public static let bonjourServiceType = AgentBonjour.serviceType
 
     /// Configuration knobs for the network transport.
     public struct Configuration: Sendable {
         /// Bonjour display name. Defaults to the bundle display name, or
-        /// `"AppMCP"` when no bundle is available (e.g. command-line tools).
+        /// `SwiftAgent` when no bundle is available (e.g. command-line tools).
         public var serviceName: String
         /// Port to bind on. Use `.any` to let the OS pick an ephemeral port.
         public var port: NWEndpoint.Port

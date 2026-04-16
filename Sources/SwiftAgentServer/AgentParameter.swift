@@ -1,20 +1,19 @@
 import Foundation
 import SwiftAgentCore
 
-/// Short alias for ``AppMCPParameter`` so result-builder call sites can
+/// Short alias for ``AgentParameter`` so result-builder call sites can
 /// read as `Parameter.string("title", …)` without a leading dot.
 ///
 /// Swift's parser treats a line that begins with `.` as a continuation of
 /// the previous expression (method chaining), which breaks the natural
 /// DSL shape of an ``AgentParameterBuilder`` block with multiple
 /// parameters. Declaring the type explicitly — via this alias — avoids
-/// the trap and keeps call sites readable. Both forms compile; prefer
-/// `Parameter.xxx` in user code.
-public typealias Parameter = AppMCPParameter
+/// the trap and keeps call sites readable.
+public typealias Parameter = AgentParameter
 
-/// A single parameter of an ``AppMCPTool``.
+/// A single parameter of an ``AgentTool``.
 ///
-/// `AppMCPParameter` is the declarative building block of the tool DSL.
+/// `AgentParameter` is the declarative building block of the tool DSL.
 /// You describe each parameter once — name, type, human-readable
 /// description, whether it is required, and an optional default — and the
 /// server derives both the JSON-Schema advertised on `tools/list` and the
@@ -23,40 +22,25 @@ public typealias Parameter = AppMCPParameter
 ///
 /// Use the factory methods (``string(_:description:isRequired:default:)``,
 /// ``integer(_:description:isRequired:default:minimum:maximum:)``, etc.)
-/// rather than the raw initializer in almost all cases — they keep the
-/// call sites readable and produce a well-formed ``MCPSchema`` for you.
-public struct AppMCPParameter: Sendable {
-    /// The machine-readable name of the parameter, as it appears in the
-    /// JSON arguments object.
+/// rather than the raw initializer in almost all cases.
+public struct AgentParameter: Sendable {
+    /// The machine-readable name of the parameter.
     public let name: String
 
-    /// Human-readable description shown to LLM callers and in generated
-    /// UIs. Should explain *what the parameter means*, not just restate
-    /// its type.
+    /// Human-readable description shown to LLM callers and generated UIs.
     public let description: String?
 
     /// The JSON schema describing valid values for this parameter.
     public let schema: MCPSchema
 
-    /// When `true`, the caller must provide this parameter; omitting it
-    /// triggers ``MCPError/invalidToolArguments(name:reason:)``.
+    /// When `true`, the caller must provide this parameter.
     public let isRequired: Bool
 
-    /// Optional default value that clients may surface in UI. AppMCP does
-    /// not auto-populate defaults at call time — it is up to the caller
-    /// to apply them — but the default propagates into the generated
-    /// schema so LLMs see the same information.
+    /// Optional default value that clients may surface in UI. SwiftAgent does
+    /// not auto-populate defaults at call time — they are advisory.
     public let defaultValue: JSONValue?
 
-    /// Build a parameter from pre-assembled pieces. Prefer the typed
-    /// factory methods for readability.
-    ///
-    /// - Parameters:
-    ///   - name: Machine-readable parameter name.
-    ///   - description: Human-readable description.
-    ///   - schema: JSON schema for valid values.
-    ///   - isRequired: Whether the parameter is required.
-    ///   - defaultValue: Optional default shown to callers.
+    /// Build a parameter from pre-assembled pieces.
     public init(
         name: String,
         description: String? = nil,
@@ -81,16 +65,8 @@ public struct AppMCPParameter: Sendable {
 
 // MARK: - Typed factories
 
-extension AppMCPParameter {
+extension AgentParameter {
     /// Declare a string parameter.
-    ///
-    /// - Parameters:
-    ///   - name: Parameter name.
-    ///   - description: Human-readable description.
-    ///   - isRequired: Whether the parameter is required. Defaults to `true`.
-    ///   - defaultValue: Optional default string.
-    ///   - enumValues: Optional closed set of permitted values.
-    ///   - format: Optional JSON Schema `format` hint (e.g. `"uri"`).
     public static func string(
         _ name: String,
         description: String? = nil,
@@ -98,8 +74,8 @@ extension AppMCPParameter {
         default defaultValue: String? = nil,
         enumValues: [String]? = nil,
         format: String? = nil
-    ) -> AppMCPParameter {
-        AppMCPParameter(
+    ) -> AgentParameter {
+        AgentParameter(
             name: name,
             description: description,
             schema: .string(description: description, enumValues: enumValues, format: format),
@@ -116,8 +92,8 @@ extension AppMCPParameter {
         default defaultValue: Int64? = nil,
         minimum: Double? = nil,
         maximum: Double? = nil
-    ) -> AppMCPParameter {
-        AppMCPParameter(
+    ) -> AgentParameter {
+        AgentParameter(
             name: name,
             description: description,
             schema: .integer(description: description, minimum: minimum, maximum: maximum),
@@ -134,8 +110,8 @@ extension AppMCPParameter {
         default defaultValue: Double? = nil,
         minimum: Double? = nil,
         maximum: Double? = nil
-    ) -> AppMCPParameter {
-        AppMCPParameter(
+    ) -> AgentParameter {
+        AgentParameter(
             name: name,
             description: description,
             schema: .number(description: description, minimum: minimum, maximum: maximum),
@@ -150,8 +126,8 @@ extension AppMCPParameter {
         description: String? = nil,
         isRequired: Bool = true,
         default defaultValue: Bool? = nil
-    ) -> AppMCPParameter {
-        AppMCPParameter(
+    ) -> AgentParameter {
+        AgentParameter(
             name: name,
             description: description,
             schema: .boolean(description: description),
@@ -166,8 +142,8 @@ extension AppMCPParameter {
         of itemSchema: MCPSchema,
         description: String? = nil,
         isRequired: Bool = true
-    ) -> AppMCPParameter {
-        AppMCPParameter(
+    ) -> AgentParameter {
+        AgentParameter(
             name: name,
             description: description,
             schema: .array(of: itemSchema, description: description),
@@ -181,8 +157,8 @@ extension AppMCPParameter {
         description: String? = nil,
         isRequired: Bool = true,
         schema: MCPSchema
-    ) -> AppMCPParameter {
-        AppMCPParameter(
+    ) -> AgentParameter {
+        AgentParameter(
             name: name,
             description: description,
             schema: schema,

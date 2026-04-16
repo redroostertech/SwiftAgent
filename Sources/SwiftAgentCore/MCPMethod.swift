@@ -1,6 +1,6 @@
 import Foundation
 
-/// Canonical JSON-RPC method names used by the AppMCP protocol.
+/// Canonical JSON-RPC method names used by the SwiftAgent protocol.
 ///
 /// Collected here as string constants so transports, routers, and tests
 /// can reference them without typos and so additions stay visible in a

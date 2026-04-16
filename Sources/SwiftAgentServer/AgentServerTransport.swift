@@ -1,7 +1,7 @@
 import Foundation
 import SwiftAgentCore
 
-/// The abstraction every AppMCP server transport implements.
+/// The abstraction every SwiftAgent server transport implements.
 ///
 /// A transport is responsible for moving framed JSON-RPC messages
 /// between the server actor and the outside world. It knows nothing

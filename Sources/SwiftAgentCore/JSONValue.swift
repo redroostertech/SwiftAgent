@@ -1,9 +1,9 @@
 import Foundation
 
-/// A type-erased JSON value used across the AppMCP wire protocol.
+/// A type-erased JSON value used across the SwiftAgent wire protocol.
 ///
 /// `JSONValue` is the canonical representation of any JSON payload that
-/// crosses the AppMCP boundary — tool arguments, tool results, JSON-RPC
+/// crosses the SwiftAgent boundary — tool arguments, tool results, JSON-RPC
 /// request/response params, schema literals, and error `data` blobs all flow
 /// through this type.
 ///

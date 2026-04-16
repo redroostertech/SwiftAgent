@@ -6,7 +6,7 @@ import SwiftAgentServer
 import AppIntents
 
 /// A protocol that an existing `AppIntent` conforms to in order to be
-/// exposed through AppMCP as a tool.
+/// exposed through SwiftAgent as a tool.
 ///
 /// The pitch to consuming apps is simple: **if you already shipped an
 /// `AppIntent` to get Siri and Shortcuts integration, one conformance
@@ -32,7 +32,7 @@ import AppIntents
 ///
 /// You do not re-describe parameter types, re-declare titles, or
 /// duplicate any metadata that `AppIntent` already owns. The point of
-/// this protocol is that AppMCP sits *alongside* your intent without
+/// this protocol is that SwiftAgent sits *alongside* your intent without
 /// taking it over.
 ///
 /// ### Example
@@ -54,7 +54,7 @@ import AppIntents
 /// extension CreateNoteIntent: AgentExposableIntent {
 ///     static var mcpDescription: String { "Create a new note with a title and body." }
 ///
-///     static var mcpParameters: [AppMCPParameter] {
+///     static var mcpParameters: [AgentParameter] {
 ///         [
 ///             .string("noteTitle", description: "The note's title"),
 ///             .string("body", description: "Markdown body of the note")
@@ -99,7 +99,7 @@ public protocol AgentExposableIntent: AppIntent {
     /// The parameter list used to derive the tool's JSON schema and
     /// validate incoming arguments. Keep the names aligned with your
     /// `@Parameter` property names so ``mcpPerform(_:)`` stays readable.
-    static var mcpParameters: [AppMCPParameter] { get }
+    static var mcpParameters: [AgentParameter] { get }
 
     /// Build an instance of `Self` from a validated argument bag, run
     /// the intent's `perform()`, and translate the result into an MCP
@@ -117,7 +117,7 @@ public protocol AgentExposableIntent: AppIntent {
 @available(iOS 16.0, macOS 13.0, macCatalyst 16.0, tvOS 16.0, visionOS 1.0, watchOS 9.0, *)
 public extension AgentExposableIntent {
     /// Default name: the type name converted to snake_case.
-    /// Override when you want to rename at the AppMCP boundary without
+    /// Override when you want to rename at the SwiftAgent boundary without
     /// renaming the underlying intent type.
     static var mcpName: String {
         AgentIntentNaming.defaultMCPName(for: Self.self)

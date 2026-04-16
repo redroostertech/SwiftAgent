@@ -2,7 +2,7 @@ import Foundation
 
 /// Identifier for a JSON-RPC 2.0 request.
 ///
-/// The JSON-RPC spec allows ids to be either a string or a number. AppMCP
+/// The JSON-RPC spec allows ids to be either a string or a number. SwiftAgent
 /// only emits integer ids from its own client, but will accept either when
 /// servicing requests from other implementations. A nil id denotes a
 /// notification — see ``JSONRPCRequest/isNotification``.

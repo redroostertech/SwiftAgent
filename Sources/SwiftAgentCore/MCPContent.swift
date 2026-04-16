@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Tools return an ordered list of content blocks so a single call can
 /// yield mixed media — for example, a sentence of human-readable text
-/// followed by an inline image thumbnail. AppMCP currently supports:
+/// followed by an inline image thumbnail. SwiftAgent currently supports:
 ///
 /// - ``text(_:)`` — plain human-readable text.
 /// - ``json(_:)`` — structured JSON the caller can parse directly. Prefer

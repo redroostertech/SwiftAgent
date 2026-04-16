@@ -4,8 +4,7 @@ import SwiftAgentCore
 /// Converts SwiftAgent tool descriptors into OpenAI's `functions` /
 /// `tools` JSON format.
 ///
-/// Phase 3 implementation — currently a stub. The full version
-/// translates `MCPToolDescriptor` → OpenAI function-calling JSON,
+/// Translates `MCPToolDescriptor` → OpenAI function-calling JSON,
 /// handling the schema key differences (`parameters` vs `inputSchema`,
 /// `function` wrapper, `strict` mode).
 public enum OpenAIToolExport {

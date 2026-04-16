@@ -1,7 +1,7 @@
 import Foundation
 import SwiftAgentCore
 
-/// The abstraction every AppMCP client transport implements.
+/// The abstraction every SwiftAgent client transport implements.
 ///
 /// A client transport is the dual of ``AgentServerTransport`` (in the
 /// `AgentServer` module): it moves framed JSON-RPC messages between

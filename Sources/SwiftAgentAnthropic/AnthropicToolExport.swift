@@ -4,8 +4,7 @@ import SwiftAgentCore
 /// Converts SwiftAgent tool descriptors into Anthropic's `tool_use`
 /// format for the Messages API.
 ///
-/// Phase 3 implementation — currently a stub. The full version
-/// translates `MCPToolDescriptor` → Anthropic tool JSON, handling
+/// Translates `MCPToolDescriptor` → Anthropic tool JSON, handling
 /// the `input_schema` key and content-block response format.
 public enum AnthropicToolExport {
     /// Convert a list of tool descriptors into Anthropic `tools` array
