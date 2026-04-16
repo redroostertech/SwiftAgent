@@ -22,6 +22,22 @@ struct ContentView: View {
         NavigationSplitView {
             ProjectSidebarView(selectedProject: $selectedProject)
                 .navigationTitle("Projects")
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button {
+                            showingAgentPanel = true
+                        } label: {
+                            Label("Agent", systemImage: "cpu")
+                        }
+                    }
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button {
+                            showingSettings = true
+                        } label: {
+                            Label("Settings", systemImage: "gear")
+                        }
+                    }
+                }
         } detail: {
             if let project = selectedProject {
                 TaskListView(projectName: project)
@@ -32,21 +48,6 @@ struct ContentView: View {
                     systemImage: "folder",
                     description: Text("Choose a project from the sidebar to view its tasks.")
                 )
-            }
-        }
-        .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
-                Button {
-                    showingAgentPanel = true
-                } label: {
-                    Label("Agent", systemImage: "cpu")
-                }
-
-                Button {
-                    showingSettings = true
-                } label: {
-                    Label("Settings", systemImage: "gear")
-                }
             }
         }
         .sheet(isPresented: $showingAgentPanel) {

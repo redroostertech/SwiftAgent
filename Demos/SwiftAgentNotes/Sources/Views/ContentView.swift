@@ -21,6 +21,15 @@ struct ContentView: View {
     var body: some View {
         NavigationSplitView {
             NoteListView(selectedNoteID: $selectedNoteID)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button {
+                            isAgentPanelPresented = true
+                        } label: {
+                            Label("Agent", systemImage: "cpu")
+                        }
+                    }
+                }
         } detail: {
             if let noteID = selectedNoteID {
                 NoteEditorView(noteID: noteID)
@@ -30,15 +39,6 @@ struct ContentView: View {
                     systemImage: "doc.text",
                     description: Text("Select a note from the sidebar or create a new one.")
                 )
-            }
-        }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    isAgentPanelPresented = true
-                } label: {
-                    Label("Agent", systemImage: "cpu")
-                }
             }
         }
         .sheet(isPresented: $isAgentPanelPresented) {
