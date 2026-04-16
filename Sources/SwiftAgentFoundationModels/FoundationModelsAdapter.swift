@@ -10,16 +10,16 @@ import SwiftAgentServer
 /// available, this file compiles to an empty stub so the target
 /// still resolves.
 ///
-/// Phase 3 implementation — the full version wraps each
-/// `MCPToolDescriptor` + handler pair into a `Tool`-conforming
-/// value that Apple's on-device model can call natively.
+/// Implementation deferred pending Foundation Models API stabilization.
+/// The adapter will wrap `MCPToolDescriptor` + handler pairs into
+/// `Tool`-conforming values that Apple's on-device model can call.
 #if canImport(FoundationModels)
 import FoundationModels
 
-// Full implementation will go here once Foundation Models API
-// surface stabilizes. The adapter reads MCPToolDescriptor schemas,
-// maps them to the Tool protocol's parameter declarations, and
-// routes perform() calls through the AgentServer's handler dispatch.
+// Deferred: Foundation Models `Tool` protocol bridge. Will read
+// MCPToolDescriptor schemas, map them to Tool parameter declarations,
+// and route perform() calls through AgentServer's handler dispatch.
+// Blocked on Foundation Models API surface stabilizing (iOS 26+).
 
 #endif
 

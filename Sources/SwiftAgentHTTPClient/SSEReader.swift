@@ -69,12 +69,11 @@ public struct SSEReader: Sendable {
             let line = String(lineBuffer[lineBuffer.startIndex..<newlineRange.lowerBound])
             lineBuffer = String(lineBuffer[newlineRange.upperBound...])
 
-            // Handle \r\n: if the line was terminated by \r and the buffer
-            // starts with \n, consume the \n as well.
-            if lineBuffer.first == "\n" && line.isEmpty == false || lineBuffer.first == "\n" {
-                // Only consume if the original separator was \r (single char).
-                // rangeOfCharacter already consumed one char; if it was \r and
-                // the next is \n, skip it.
+            // Handle \r\n: rangeOfCharacter(.newlines) matches \r or \n
+            // individually. If it matched \r and the next char is \n, consume
+            // the \n so a \r\n pair doesn't produce a spurious blank line.
+            if lineBuffer.first == "\n" {
+                lineBuffer.removeFirst()
             }
 
             if line.isEmpty {

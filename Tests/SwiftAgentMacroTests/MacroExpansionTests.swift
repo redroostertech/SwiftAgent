@@ -5,7 +5,7 @@ import SwiftSyntaxMacrosTestSupport
 @testable import SwiftAgentMacros
 
 /// Tests that the `@AgentTool` and `@Param` macros produce correct
-/// Swift source code.
+/// Swift source code via `assertMacroExpansion`.
 final class MacroExpansionTests: XCTestCase {
     let macros: [String: any Macro.Type] = [
         "AgentTool": AgentToolMacro.self,
@@ -46,9 +46,9 @@ final class MacroExpansionTests: XCTestCase {
                 public static var descriptor: MCPToolDescriptor {
                     var properties: [String: MCPSchema] = [:]
                     var required: [String] = []
-                    properties["title"] = MCPSchema.string()
+                    properties["title"] = MCPSchema.string(description: "Note title")
                     required.append("title")
-                    properties["body"] = MCPSchema.string()
+                    properties["body"] = MCPSchema.string(description: "Markdown body")
                     required.append("body")
                     let inputSchema = MCPSchema.object(
                         properties: properties,
@@ -63,9 +63,10 @@ final class MacroExpansionTests: XCTestCase {
                 }
 
                 public static func perform(arguments args: AgentToolArguments) async throws -> MCPCallToolResult {
-                    var instance = CreateNote()
-                    instance.title = try args.string("title")
-                    instance.body = try args.string("body")
+                    let instance = CreateNote(
+                        title: try args.string("title"),
+                        body: try args.string("body")
+                    )
                     let result = try await instance.perform()
                     return .text(String(describing: result))
                 }
@@ -121,9 +122,9 @@ final class MacroExpansionTests: XCTestCase {
                 public static var descriptor: MCPToolDescriptor {
                     var properties: [String: MCPSchema] = [:]
                     var required: [String] = []
-                    properties["id"] = MCPSchema.string()
+                    properties["id"] = MCPSchema.string(description: "Note ID")
                     required.append("id")
-                    properties["pinned"] = MCPSchema.boolean()
+                    properties["pinned"] = MCPSchema.boolean(description: "Pin state")
                     let inputSchema = MCPSchema.object(
                         properties: properties,
                         required: required,
@@ -137,11 +138,10 @@ final class MacroExpansionTests: XCTestCase {
                 }
 
                 public static func perform(arguments args: AgentToolArguments) async throws -> MCPCallToolResult {
-                    var instance = PinNote()
-                    instance.id = try args.string("id")
-                    if let val = args.optionalBoolean("pinned") {
-                        instance.pinned = val
-                    }
+                    let instance = PinNote(
+                        id: try args.string("id"),
+                        pinned: args.optionalBoolean("pinned") ?? true
+                    )
                     let result = try await instance.perform()
                     return .text(String(describing: result))
                 }
@@ -163,7 +163,7 @@ final class MacroExpansionTests: XCTestCase {
         )
     }
 
-    func testSnakeCaseConversion() {
+    func testSnakeCaseConversionAndZeroParams() {
         assertMacroExpansion(
             """
             @AgentTool("Fetch")
@@ -201,8 +201,7 @@ final class MacroExpansionTests: XCTestCase {
                 }
 
                 public static func perform(arguments args: AgentToolArguments) async throws -> MCPCallToolResult {
-                    var instance = FetchHTTPRequest()
-
+                    let instance = FetchHTTPRequest()
                     let result = try await instance.perform()
                     return .text(String(describing: result))
                 }

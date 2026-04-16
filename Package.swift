@@ -134,7 +134,10 @@ let package = Package(
 
         .testTarget(
             name: "SwiftAgentCoreTests",
-            dependencies: ["SwiftAgentCore", "SwiftAgentServer", "SwiftAgentClient"],
+            dependencies: [
+                "SwiftAgentCore", "SwiftAgentServer", "SwiftAgentClient",
+                "SwiftAgentOpenAI", "SwiftAgentAnthropic"
+            ],
             path: "Tests/SwiftAgentCoreTests",
             swiftSettings: strictConcurrency
         ),

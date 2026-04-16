@@ -28,7 +28,8 @@ public struct AgentToolMacro: ExtensionMacro {
 
         let params = extractParams(from: structDecl)
         let parameterDecls = buildParameterDeclarations(params)
-        let performArgs = buildPerformArguments(params, structName: structName)
+
+        let initArgs = buildMemberwiseInit(params)
 
         let ext: DeclSyntax = """
         extension \(raw: structName): AgentToolProtocol {
@@ -52,8 +53,7 @@ public struct AgentToolMacro: ExtensionMacro {
             }
 
             public static func perform(arguments args: AgentToolArguments) async throws -> MCPCallToolResult {
-                var instance = \(raw: structName)()
-                \(raw: performArgs)
+                let instance = \(raw: structName)(\(raw: initArgs))
                 let result = try await instance.perform()
                 return .text(String(describing: result))
             }
@@ -160,61 +160,97 @@ public struct AgentToolMacro: ExtensionMacro {
         }
     }
 
-    private static func argAccessor(for swiftType: String) -> String {
-        switch swiftType {
-        case "String": return "string"
-        case "Int", "Int64", "Int32", "Int16", "Int8": return "integer"
-        case "Double", "Float": return "number"
-        case "Bool": return "boolean"
-        default: return "string"
-        }
-    }
 
     private static func buildParameterDeclarations(_ params: [ParamInfo]) -> String {
         var lines: [String] = []
         for param in params {
-            let desc = param.description.map { ", description: \"\(escapeStringLiteral($0))\"" } ?? ""
-            lines.append("properties[\"\(param.name)\"] = MCPSchema\(schemaType(for: param.type))")
+            let desc = param.description.map { "description: \"\(escapeStringLiteral($0))\"" } ?? ""
+            let schemaCall = schemaTypeWithDescription(for: param.type, description: desc)
+            lines.append("properties[\"\(param.name)\"] = \(schemaCall)")
             if !param.hasDefault {
                 lines.append("required.append(\"\(param.name)\")")
             }
-            _ = desc
         }
         return lines.joined(separator: "\n        ")
     }
 
-    private static func buildPerformArguments(_ params: [ParamInfo], structName: String) -> String {
-        var lines: [String] = []
+    private static func schemaTypeWithDescription(for swiftType: String, description: String) -> String {
+        let descArg = description.isEmpty ? "" : description
+        switch swiftType {
+        case "String":
+            return descArg.isEmpty ? "MCPSchema.string()" : "MCPSchema.string(\(descArg))"
+        case "Int", "Int64", "Int32", "Int16", "Int8":
+            return descArg.isEmpty ? "MCPSchema.integer()" : "MCPSchema.integer(\(descArg))"
+        case "Double", "Float":
+            return descArg.isEmpty ? "MCPSchema.number()" : "MCPSchema.number(\(descArg))"
+        case "Bool":
+            return descArg.isEmpty ? "MCPSchema.boolean()" : "MCPSchema.boolean(\(descArg))"
+        default:
+            return descArg.isEmpty ? "MCPSchema.string()" : "MCPSchema.string(\(descArg))"
+        }
+    }
+
+    /// Generates a memberwise initializer call that pulls each parameter
+    /// from the arguments bag. Required params use throwing accessors;
+    /// optional params use optional accessors with the declared default
+    /// as the fallback.
+    private static func buildMemberwiseInit(_ params: [ParamInfo]) -> String {
+        guard !params.isEmpty else { return "" }
+        var args: [String] = []
         for param in params {
-            let accessor = argAccessor(for: param.type)
             if param.hasDefault {
-                let castSuffix = param.type == "Int" ? "Int64" : param.type
-                if param.type == "Bool" {
-                    lines.append("if let val = args.optionalBoolean(\"\(param.name)\") { instance.\(param.name) = val }")
-                } else if param.type == "String" {
-                    lines.append("if let val = args.optionalString(\"\(param.name)\") { instance.\(param.name) = val }")
-                } else if ["Int", "Int64"].contains(param.type) {
-                    lines.append("if let val = args.optionalInteger(\"\(param.name)\") { instance.\(param.name) = \(param.type)(val) }")
-                } else if ["Double", "Float"].contains(param.type) {
-                    lines.append("if let val = args.optionalNumber(\"\(param.name)\") { instance.\(param.name) = \(param.type)(val) }")
-                } else {
-                    lines.append("if let val = args.optionalString(\"\(param.name)\") { instance.\(param.name) = val }")
-                }
+                let fallback = param.defaultExpr ?? defaultForType(param.type)
+                args.append("\(param.name): \(optionalAccessor(for: param))?? \(fallback)")
             } else {
-                if param.type == "String" {
-                    lines.append("instance.\(param.name) = try args.string(\"\(param.name)\")")
-                } else if ["Int", "Int64"].contains(param.type) {
-                    lines.append("instance.\(param.name) = \(param.type)(try args.integer(\"\(param.name)\"))")
-                } else if ["Double", "Float"].contains(param.type) {
-                    lines.append("instance.\(param.name) = \(param.type)(try args.number(\"\(param.name)\"))")
-                } else if param.type == "Bool" {
-                    lines.append("instance.\(param.name) = try args.boolean(\"\(param.name)\")")
-                } else {
-                    lines.append("instance.\(param.name) = try args.string(\"\(param.name)\")")
-                }
+                args.append("\(param.name): \(requiredAccessor(for: param))")
             }
         }
-        return lines.joined(separator: "\n        ")
+        if args.count == 1 {
+            return args[0]
+        }
+        return "\n            " + args.joined(separator: ",\n            ") + "\n        "
+    }
+
+    private static let integerTypes = ["Int", "Int64", "Int32", "Int16", "Int8"]
+    private static let floatTypes = ["Double", "Float"]
+
+    private static func requiredAccessor(for param: ParamInfo) -> String {
+        if param.type == "String" {
+            return "try args.string(\"\(param.name)\")"
+        } else if integerTypes.contains(param.type) {
+            return "\(param.type)(try args.integer(\"\(param.name)\"))"
+        } else if floatTypes.contains(param.type) {
+            return "\(param.type)(try args.number(\"\(param.name)\"))"
+        } else if param.type == "Bool" {
+            return "try args.boolean(\"\(param.name)\")"
+        } else {
+            return "try args.string(\"\(param.name)\")"
+        }
+    }
+
+    private static func optionalAccessor(for param: ParamInfo) -> String {
+        if param.type == "String" {
+            return "args.optionalString(\"\(param.name)\") "
+        } else if integerTypes.contains(param.type) {
+            let cast = param.type == "Int64" ? "" : ".map(\(param.type).init) "
+            return "args.optionalInteger(\"\(param.name)\")\(cast) "
+        } else if floatTypes.contains(param.type) {
+            let cast = param.type == "Double" ? "" : ".map(\(param.type).init) "
+            return "args.optionalNumber(\"\(param.name)\")\(cast) "
+        } else if param.type == "Bool" {
+            return "args.optionalBoolean(\"\(param.name)\") "
+        } else {
+            return "args.optionalString(\"\(param.name)\") "
+        }
+    }
+
+    private static func defaultForType(_ type: String) -> String {
+        switch type {
+        case "String": return "\"\""
+        case "Bool": return "false"
+        case "Double", "Float": return "0.0"
+        default: return "0"
+        }
     }
 
     private static func buildParameterBuilderEntries(_ params: [ParamInfo]) -> String {
