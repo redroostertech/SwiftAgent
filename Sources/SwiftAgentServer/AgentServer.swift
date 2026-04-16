@@ -196,9 +196,9 @@ public actor AgentServer {
     }
 
     private func handleInitialize(_ params: JSONValue?) throws -> JSONValue {
-        if isInitialized {
-            throw MCPError.alreadyInitialized
-        }
+        // Allow re-initialization so new clients can connect without
+        // restarting the server. Each initialize resets the session.
+        isInitialized = false
         let decoded: MCPInitializeParams = try decodeParams(params)
         guard AgentProtocol.supportedVersions.contains(decoded.protocolVersion) else {
             throw MCPError.unsupportedProtocolVersion(
