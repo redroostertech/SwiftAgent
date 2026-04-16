@@ -130,12 +130,22 @@ let package = Package(
             swiftSettings: strictConcurrency
         ),
 
-        // MARK: - Test server executable
+        // MARK: - Executables
 
         .executableTarget(
             name: "MCPTestServer",
             dependencies: ["SwiftAgentCore", "SwiftAgentServer", "SwiftAgentHTTPServer"],
             path: "Sources/MCPTestServer",
+            swiftSettings: strictConcurrency
+        ),
+
+        .executableTarget(
+            name: "AgentRunner",
+            dependencies: [
+                "SwiftAgentCore", "SwiftAgentClient",
+                "SwiftAgentHTTPClient", "SwiftAgentOpenAI"
+            ],
+            path: "Sources/AgentRunner",
             swiftSettings: strictConcurrency
         ),
 

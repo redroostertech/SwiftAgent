@@ -16,7 +16,7 @@ import SwiftAgentHTTPServer
 // and result rendering.
 // ─────────────────────────────────────────────────────────────
 
-let port: UInt16 = 8080
+let port: UInt16 = 9090
 
 let server = AgentServer(
     info: MCPImplementation(
