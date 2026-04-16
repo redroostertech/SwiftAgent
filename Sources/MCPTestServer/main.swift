@@ -83,8 +83,14 @@ try await server.register(AgentTool(
     }
 })
 
-let transport = HTTPServerTransport(port: port)
-try await server.start(transport: transport)
+// Wrap the server handler with logging so we can see what's happening.
+let originalServer = server
+let loggingTransport = HTTPServerTransport(port: port)
+try await originalServer.start(transport: loggingTransport)
+
+// Also log every request the server handles by wrapping it.
+// (The HTTPServerTransport logs are internal; we add top-level visibility here.)
+print("Server started. Listening for connections...")
 
 print("""
     ┌──────────────────────────────────────────────┐

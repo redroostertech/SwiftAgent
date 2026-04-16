@@ -16,7 +16,7 @@ import Foundation
 ///
 /// Use ``custom(code:message:data:)`` to surface an error from your own
 /// reserved space while staying Swift-typed.
-public enum MCPError: Error, Sendable, Hashable {
+public enum MCPError: LocalizedError, Sendable, Hashable {
     /// A request was received before the `initialize` handshake completed.
     case notInitialized
     /// A second `initialize` request was received after the first succeeded.
@@ -98,6 +98,9 @@ public enum MCPError: Error, Sendable, Hashable {
             nil
         }
     }
+
+    /// The human-readable description surfaced by `localizedDescription`.
+    public var errorDescription: String? { message }
 
     /// Convert this typed error into its JSON-RPC wire representation.
     ///
