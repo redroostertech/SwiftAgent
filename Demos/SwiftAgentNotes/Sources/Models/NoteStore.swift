@@ -46,14 +46,17 @@ actor NoteStore {
     func list(limit: Int? = nil) throws -> [Note] {
         var descriptor = FetchDescriptor<Note>(
             sortBy: [
-                SortDescriptor(\.pinned, order: .reverse),
                 SortDescriptor(\.updatedAt, order: .reverse)
             ]
         )
         if let limit {
             descriptor.fetchLimit = limit
         }
-        return try modelContext.fetch(descriptor)
+        let results = try modelContext.fetch(descriptor)
+        return results.sorted { lhs, rhs in
+            if lhs.pinned != rhs.pinned { return lhs.pinned }
+            return lhs.updatedAt > rhs.updatedAt
+        }
     }
 
     /// Fetch a single note by its identifier.

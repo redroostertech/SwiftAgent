@@ -12,12 +12,20 @@ struct NoteListView: View {
     /// Binding to the parent's selected note identifier.
     @Binding var selectedNoteID: String?
 
-    /// All notes fetched from SwiftData, sorted by display order.
+    /// All notes fetched from SwiftData, sorted by most recently updated.
+    /// Pinned-first ordering is applied in the computed `sortedNotes`.
     @Query(sort: [
-        SortDescriptor(\Note.pinned, order: .reverse),
         SortDescriptor(\Note.updatedAt, order: .reverse)
     ])
     private var notes: [Note]
+
+    /// Notes reordered so pinned items appear first.
+    private var sortedNotes: [Note] {
+        notes.sorted { lhs, rhs in
+            if lhs.pinned != rhs.pinned { return lhs.pinned }
+            return lhs.updatedAt > rhs.updatedAt
+        }
+    }
 
     /// The model context used for delete operations.
     @Environment(\.modelContext) private var modelContext
@@ -25,11 +33,11 @@ struct NoteListView: View {
     /// Current search text.
     @State private var searchText = ""
 
-    /// Notes filtered by the current search query.
+    /// Notes filtered by the current search query, with pinned-first ordering.
     private var filteredNotes: [Note] {
-        guard !searchText.isEmpty else { return notes }
+        guard !searchText.isEmpty else { return sortedNotes }
         let query = searchText.localizedLowercase
-        return notes.filter {
+        return sortedNotes.filter {
             $0.title.localizedStandardContains(query) ||
             $0.body.localizedStandardContains(query)
         }
