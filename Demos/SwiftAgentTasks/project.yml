@@ -1,0 +1,28 @@
+name: SwiftAgentTasks
+options:
+  bundleIdPrefix: com.swiftagent
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "16.0"
+
+packages:
+  SwiftAgent:
+    path: ../../
+
+targets:
+  SwiftAgentTasks:
+    type: application
+    platform: iOS
+    sources:
+      - Sources
+    dependencies:
+      - package: SwiftAgent
+        product: SwiftAgent
+      - package: SwiftAgent
+        product: SwiftAgentHTTPClient
+    settings:
+      base:
+        INFOPLIST_KEY_UILaunchScreen_Generation: true
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        SWIFT_STRICT_CONCURRENCY: complete
