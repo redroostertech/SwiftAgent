@@ -21,11 +21,13 @@ let package = Package(
         .library(name: "SwiftAgentOpenAI", targets: ["SwiftAgentOpenAI"]),
         .library(name: "SwiftAgentAnthropic", targets: ["SwiftAgentAnthropic"]),
         .library(name: "SwiftAgentFoundationModels", targets: ["SwiftAgentFoundationModels"]),
+        .library(name: "SwiftAgentMLX", targets: ["SwiftAgentMLX"]),
         .library(name: "SwiftAgentHTTPServer", targets: ["SwiftAgentHTTPServer"]),
         .library(name: "SwiftAgentHTTPClient", targets: ["SwiftAgentHTTPClient"])
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-syntax.git", from: "600.0.0")
+        .package(url: "https://github.com/apple/swift-syntax.git", from: "600.0.0"),
+        .package(url: "https://github.com/ml-explore/mlx-swift-examples.git", from: "2.0.0")
     ],
     targets: [
         // MARK: - Core
@@ -111,6 +113,17 @@ let package = Package(
             name: "SwiftAgentFoundationModels",
             dependencies: ["SwiftAgentCore", "SwiftAgentServer"],
             path: "Sources/SwiftAgentFoundationModels",
+            swiftSettings: strictConcurrency
+        ),
+
+        .target(
+            name: "SwiftAgentMLX",
+            dependencies: [
+                "SwiftAgentCore",
+                "SwiftAgentServer",
+                .product(name: "MLXLMCommon", package: "mlx-swift-examples")
+            ],
+            path: "Sources/SwiftAgentMLX",
             swiftSettings: strictConcurrency
         ),
 
