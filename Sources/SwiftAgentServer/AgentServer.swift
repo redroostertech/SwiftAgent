@@ -57,14 +57,29 @@ public actor AgentServer {
     private var isInitialized = false
     private var activeTransport: (any AgentServerTransport)?
 
+    /// When true, in-process `callTool(...)` invocations implicitly
+    /// initialize the server without waiting for an MCP handshake. Keep
+    /// this off for servers that host network clients — on-wire clients
+    /// must perform the handshake before any tool call is accepted.
+    public let autoInitializeForLocalCalls: Bool
+
     /// Build a server with the given identity.
     ///
     /// - Parameters:
     ///   - info: The server's public identity.
     ///   - instructions: Optional free-form guidance for LLM clients.
-    public init(info: MCPImplementation, instructions: String? = nil) {
+    ///   - autoInitializeForLocalCalls: Set `true` for in-process-only
+    ///     servers (on-device adapters, unit tests, App Intents) so
+    ///     `callTool(...)` works without an explicit handshake. Defaults
+    ///     to `false` to preserve MCP semantics.
+    public init(
+        info: MCPImplementation,
+        instructions: String? = nil,
+        autoInitializeForLocalCalls: Bool = false
+    ) {
         self.info = info
         self.instructions = instructions
+        self.autoInitializeForLocalCalls = autoInitializeForLocalCalls
     }
 
     // MARK: - Tool registration
@@ -121,6 +136,30 @@ public actor AgentServer {
         await activeTransport?.stop()
         activeTransport = nil
         isInitialized = false
+    }
+
+    // MARK: - Direct invocation (in-process adapters)
+
+    /// Invoke a registered tool directly, bypassing transport-level
+    /// JSON-RPC framing. Intended for in-process adapters (on-device LLM
+    /// bridges, App Intents, unit tests) that already hold strong-typed
+    /// arguments and want to avoid the encode/decode round-trip.
+    ///
+    /// Auto-initializes the server on first call so ad-hoc adapters do
+    /// not need to perform the MCP handshake dance.
+    public func callTool(
+        name: String,
+        arguments: [String: JSONValue] = [:]
+    ) async throws -> MCPCallToolResult {
+        if !isInitialized {
+            guard autoInitializeForLocalCalls else {
+                throw MCPError.notInitialized
+            }
+            isInitialized = true
+        }
+        let jsonArguments: JSONValue? = arguments.isEmpty ? nil : .object(arguments)
+        let params = MCPCallToolParams(name: name, arguments: jsonArguments)
+        return try await invokeTool(params)
     }
 
     // MARK: - Request dispatch
